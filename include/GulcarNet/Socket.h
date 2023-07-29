@@ -3,10 +3,13 @@
 #include <GulcarNet/IPAddr.h>
 
 #ifdef _WIN32
-#define INVALID_SOCKET ~0
+    #ifdef INVALID_SOCKET
+        #undef INVALID_SOCKET
+        #define INVALID_SOCKET ~0
+    #endif
 #else
-#define SOCKET int
-#define INVALID_SOCKET -1
+    #define SOCKET int
+    #define INVALID_SOCKET -1
 #endif
 
 namespace GulcarNet

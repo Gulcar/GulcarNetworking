@@ -9,6 +9,8 @@ add_library(${PROJECT_NAME}
     include/GulcarNet/Socket.h
     src/IPAddr.cpp
     include/GulcarNet/IPAddr.h
+    src/Errors.cpp
+    include/GulcarNet/Errors.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

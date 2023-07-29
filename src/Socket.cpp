@@ -1,14 +1,15 @@
 #include <GulcarNet/Socket.h>
 #include <GulcarNet/IPAddr.h>
+#include <GulcarNet/Errors.h>
 #include <stdexcept>
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <WinSock2.h>
-#pragma comment(lib, "Ws2_32.lib")
+    #define WIN32_LEAN_AND_MEAN
+    #include <WinSock2.h>
+    #pragma comment(lib, "Ws2_32.lib")
 #else
-#include <sys/socket.h>
-#include <unistd.h>
+    #include <sys/socket.h>
+    #include <unistd.h>
 #endif
 
 
@@ -20,6 +21,7 @@ namespace GulcarNet
 
         if (m_socket == INVALID_SOCKET)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: socket failed!");
         }
     }
@@ -35,6 +37,7 @@ namespace GulcarNet
 
         if (error != 0)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: bind failed!");
         }
     }
@@ -51,6 +54,7 @@ namespace GulcarNet
 
         if (bytesReceived == -1)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: recvfrom failed!");
         }
 
@@ -63,6 +67,7 @@ namespace GulcarNet
 
         if (bytesSent == -1)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: sendto failed!");
         }
 
@@ -79,6 +84,7 @@ namespace GulcarNet
 
         if (error == -1)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: closesocket failed!");
         }
     }

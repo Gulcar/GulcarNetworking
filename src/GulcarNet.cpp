@@ -1,11 +1,12 @@
 #include <GulcarNet/GulcarNet.h>
+#include <GulcarNet/Errors.h>
 #include <stdexcept>
 #include <string>
 
 #ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN
-#include <WinSock2.h>
-#pragma comment(lib, "Ws2_32.lib")
+    #define WIN32_LEAN_AND_MEAN
+    #include <WinSock2.h>
+    #pragma comment(lib, "Ws2_32.lib")
 #endif
 
 namespace GulcarNet
@@ -18,6 +19,7 @@ namespace GulcarNet
 
         if (error != 0)
         {
+            GulcarNet::PrintErrorWS(error);
             throw std::runtime_error("ERROR: WSAStartup failed");
         }
 #endif
@@ -30,6 +32,7 @@ namespace GulcarNet
 
         if (error != 0)
         {
+            GulcarNet::PrintError();
             throw std::runtime_error("ERROR: WSACleanup failed");
         }
 #endif

@@ -3,10 +3,10 @@
 #include <stdint.h>
 
 #ifdef _WIN32
-#include <WinSock2.h>
+    #include <WinSock2.h>
 #else
-#include <netinet/in.h>
-#include <arpa/inet.h>
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
 #endif
 
 namespace GulcarNet
