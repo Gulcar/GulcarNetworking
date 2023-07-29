@@ -2,10 +2,15 @@
 #include <GulcarNet/IPAddr.h>
 #include <stdexcept>
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #include <WinSock2.h>
-
 #pragma comment(lib, "Ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <unistd.h>
+#endif
+
 
 namespace GulcarNet
 {
@@ -36,11 +41,15 @@ namespace GulcarNet
 
     size_t Socket::RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr)
     {
+#ifdef _WIN32
         int addrLen = sizeof(sockaddr_in);
+#else
+        socklen_t addrLen = sizeof(sockaddr_in);
+#endif
 
         int bytesReceived = recvfrom(m_socket, (char*)outBuffer, outBufferSize, 0, (sockaddr*)outFromAddr->GetAddr(), &addrLen);
 
-        if (bytesReceived == SOCKET_ERROR)
+        if (bytesReceived == -1)
         {
             throw std::runtime_error("ERROR: recvfrom failed!");
         }
@@ -52,7 +61,7 @@ namespace GulcarNet
     {
         int bytesSent = sendto(m_socket, (const char*)data, bytes, 0, (sockaddr*)addr.GetAddr(), sizeof(sockaddr_in));
 
-        if (bytesSent == SOCKET_ERROR)
+        if (bytesSent == -1)
         {
             throw std::runtime_error("ERROR: sendto failed!");
         }
@@ -62,9 +71,13 @@ namespace GulcarNet
 
     void Socket::Close()
     {
+#ifdef _WIN32
         int error = closesocket(m_socket);
+#else
+        int error = close(m_socket);
+#endif
 
-        if (error == SOCKET_ERROR)
+        if (error == -1)
         {
             throw std::runtime_error("ERROR: closesocket failed!");
         }
