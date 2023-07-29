@@ -10,6 +10,7 @@
 #else
     #include <sys/socket.h>
     #include <unistd.h>
+    #include <errno.h>
 #endif
 
 
@@ -42,7 +43,7 @@ namespace GulcarNet
         }
     }
 
-    size_t Socket::RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr)
+    int Socket::RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr)
     {
 #ifdef _WIN32
         int addrLen = sizeof(sockaddr_in);
@@ -54,14 +55,26 @@ namespace GulcarNet
 
         if (bytesReceived == -1)
         {
-            GulcarNet::PrintError();
-            throw std::runtime_error("ERROR: recvfrom failed!");
+#ifdef _WIN32
+            int error = WSAGetLastError();
+            if (error != WSAECONNRESET)
+            {
+                GulcarNet::PrintErrorWS(error);
+                throw std::runtime_error("ERROR: recvfrom failed!");
+            }
+#else
+            if (errno != ECONNREFUSED)
+            {
+                GulcarNet::PrintError();
+                throw std::runtime_error("ERROR: recvfrom failed!");
+            }
+#endif
         }
 
         return bytesReceived;
     }
 
-    size_t Socket::SendTo(const void* data, size_t bytes, const IPAddr& addr)
+    int Socket::SendTo(const void* data, size_t bytes, const IPAddr& addr)
     {
         int bytesSent = sendto(m_socket, (const char*)data, bytes, 0, (sockaddr*)addr.GetAddr(), sizeof(sockaddr_in));
 

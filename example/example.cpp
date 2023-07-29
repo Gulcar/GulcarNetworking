@@ -20,7 +20,12 @@ void ClientMain()
         char buf[128] = {};
 
         GulcarNet::IPAddr addr;
-        size_t bytes = sock.RecvFrom(buf, sizeof(buf), &addr);
+        int bytes = sock.RecvFrom(buf, sizeof(buf), &addr);
+        if (bytes == -1)
+        {
+            std::cout << "disconnected!\n";
+            break;
+        }
 
         std::cout << "received (" << bytes << " bytes): " << buf << "\n";
     }
@@ -44,7 +49,12 @@ void ServerMain()
 
         char buf[128] = {};
 
-        size_t bytes = sock.RecvFrom(buf, sizeof(buf), &clientAddr);
+        int bytes = sock.RecvFrom(buf, sizeof(buf), &clientAddr);
+        if (bytes == -1)
+        {
+            std::cout << "disconnected!\n";
+            break;
+        }
 
         std::cout << "received (" << bytes << " bytes): " << buf << "\n";
 

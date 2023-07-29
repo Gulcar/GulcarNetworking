@@ -34,9 +34,14 @@ namespace GulcarNet
             nullptr);
 
         if (msg[0] == '\0')
+        {
             std::cout << "GulcarNet ERROR: " << error << "\n";
+        }
         else
-            std::cout << "GulcarNet ERROR: " << msg << "\n";
+        {
+            std::cout << "GulcarNet ERROR: " << msg;
+            std::cout << "error code: " << error << "\n";
+        }
 #endif
     }
 }

@@ -22,9 +22,9 @@ namespace GulcarNet
 
         void Bind(uint16_t port);
 
-        size_t RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr);
+        int RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr);
 
-        size_t SendTo(const void* data, size_t bytes, const IPAddr& addr);
+        int SendTo(const void* data, size_t bytes, const IPAddr& addr);
 
         void Close();
 
