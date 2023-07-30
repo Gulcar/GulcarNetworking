@@ -2,6 +2,7 @@
 
 #include <GulcarNet/IPAddr.h>
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef _WIN32
     #define SOCKET uint64_t
@@ -24,6 +25,8 @@ namespace GulcarNet
 
         void Bind(uint16_t port);
 
+        void SetBlocking(bool block);
+
         int RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr);
 
         int SendTo(const void* data, size_t bytes, const IPAddr& addr);
@@ -32,5 +35,11 @@ namespace GulcarNet
 
     private:
         SOCKET m_socket = INVALID_SOCKET;
+    };
+
+    enum SockErr
+    {
+        SockErr_WouldBlock = -40,
+        SockErr_ConnRefused = -41,
     };
 }

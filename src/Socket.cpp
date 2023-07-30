@@ -18,6 +18,8 @@
 
 #else
     #include <sys/socket.h>
+    #include <netinet/in.h>
+    #include <fcntl.h>
     #include <unistd.h>
     #include <errno.h>
 #endif
@@ -82,6 +84,25 @@ namespace GulcarNet
         }
     }
 
+    void Socket::SetBlocking(bool block)
+    {
+#ifdef _WIN32
+        unsigned long nonBlocking = block ? 0 : 1;
+        if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0)
+        {
+            PrintError();
+            throw std::runtime_error("ERROR: ioctlsocket failed!");
+        }
+#else
+        int nonBlocking = block ? 0 : 1;
+        if (fcntl(m_socket, F_SETFL, O_NONBLOCK, nonBlocking) == -1)
+        {
+            PrintError();
+            throw std::runtime_error("ERROR: fcntl failed!");
+        }
+#endif
+    }
+
     int Socket::RecvFrom(void* outBuffer, size_t outBufferSize, IPAddr* outFromAddr)
     {
 #ifdef _WIN32
@@ -103,17 +124,17 @@ namespace GulcarNet
         {
 #ifdef _WIN32
             int error = WSAGetLastError();
-            if (error != WSAECONNRESET)
-            {
-                PrintErrorWS(error);
-                throw std::runtime_error("ERROR: recvfrom failed!");
-            }
+            if (error == WSAECONNRESET) return SockErr_ConnRefused;
+            if (error == WSAEWOULDBLOCK) return SockErr_WouldBlock;
+
+            PrintErrorWS(error);
+            throw std::runtime_error("ERROR: recvfrom failed!");
 #else
-            if (errno != ECONNREFUSED)
-            {
-                PrintError();
-                throw std::runtime_error("ERROR: recvfrom failed!");
-            }
+            if (errno == ECONNREFUSED) return SockErr_ConnRefused;
+            if (errno == EWOULDBLOCK) return SockErr_WouldBlock;
+
+            PrintError();
+            throw std::runtime_error("ERROR: recvfrom failed!");
 #endif
         }
 

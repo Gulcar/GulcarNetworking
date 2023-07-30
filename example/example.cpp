@@ -14,13 +14,14 @@ void ClientMain()
         std::string text;
         std::getline(std::cin, text);
 
-        sock.SendTo(text.data(), text.length(), GulcarNet::IPAddr(127,0,0,1, 6543));
+        sock.SendTo(text.data(), text.length(), GulcarNet::IPAddr("127.0.0.1", 6543));
 
         char buf[128] = {};
 
         GulcarNet::IPAddr addr;
         int bytes = sock.RecvFrom(buf, sizeof(buf), &addr);
-        if (bytes == -1)
+
+        if (bytes == GulcarNet::SockErr_ConnRefused)
         {
             std::cout << "disconnected!\n";
             break;
@@ -49,10 +50,15 @@ void ServerMain()
         char buf[128] = {};
 
         int bytes = sock.RecvFrom(buf, sizeof(buf), &clientAddr);
-        if (bytes == -1)
+
+        if (bytes == GulcarNet::SockErr_ConnRefused)
         {
             std::cout << "disconnected!\n";
             break;
+        }
+        if (bytes < 0)
+        {
+            continue;
         }
 
         std::cout << "received (" << bytes << " bytes): " << buf << "\n";
