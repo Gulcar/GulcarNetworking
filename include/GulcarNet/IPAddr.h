@@ -2,25 +2,15 @@
 
 #include <stdint.h>
 
-#ifdef _WIN32
-    #include <WinSock2.h>
-#else
-    #include <netinet/in.h>
-    #include <arpa/inet.h>
-#endif
-
 namespace GulcarNet
 {
-    class IPAddr
+    struct IPAddr
     {
-    public:
-        IPAddr() { }
+        IPAddr() { address = 0; port = 0; }
         IPAddr(const char* addr, uint16_t port);
+        IPAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
 
-        inline sockaddr_in* GetAddr() { return &m_addr; }
-        inline const sockaddr_in* GetAddr() const { return &m_addr; }
-
-    private:
-        sockaddr_in m_addr = {};
+        uint32_t address;
+        uint16_t port;
     };
 }

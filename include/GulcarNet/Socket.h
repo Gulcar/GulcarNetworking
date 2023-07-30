@@ -1,12 +1,11 @@
 #pragma once
 
 #include <GulcarNet/IPAddr.h>
+#include <stdint.h>
 
 #ifdef _WIN32
-    #ifdef INVALID_SOCKET
-        #undef INVALID_SOCKET
-        #define INVALID_SOCKET ~0
-    #endif
+    #define SOCKET uint64_t
+    #define INVALID_SOCKET ~0
 #else
     #define SOCKET int
     #define INVALID_SOCKET -1
@@ -14,6 +13,9 @@
 
 namespace GulcarNet
 {
+    void InitSockets();
+    void ShutdownSockets();
+
     class Socket
     {
     public:
@@ -27,7 +29,6 @@ namespace GulcarNet
         int SendTo(const void* data, size_t bytes, const IPAddr& addr);
 
         void Close();
-
 
     private:
         SOCKET m_socket = INVALID_SOCKET;

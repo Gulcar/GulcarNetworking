@@ -1,11 +1,10 @@
+#include <GulcarNet/GulcarNet.h>
 #include <iostream>
 #include <string>
-#include <GulcarNet/GulcarNet.h>
-#include <GulcarNet/Socket.h>
 
 void ClientMain()
 {
-    GulcarNet::Init();
+    GulcarNet::InitSockets();
 
     GulcarNet::Socket sock;
 
@@ -15,7 +14,7 @@ void ClientMain()
         std::string text;
         std::getline(std::cin, text);
 
-        sock.SendTo(text.data(), text.length(), GulcarNet::IPAddr("127.0.0.1", 6543));
+        sock.SendTo(text.data(), text.length(), GulcarNet::IPAddr(127,0,0,1, 6543));
 
         char buf[128] = {};
 
@@ -31,12 +30,12 @@ void ClientMain()
     }
 
     sock.Close();
-    GulcarNet::Shutdown();
+    GulcarNet::ShutdownSockets();
 }
 
 void ServerMain()
 {
-    GulcarNet::Init();
+    GulcarNet::InitSockets();
 
     GulcarNet::Socket sock;
     sock.Bind(6543);
@@ -62,7 +61,7 @@ void ServerMain()
     }
 
     sock.Close();
-    GulcarNet::Shutdown();
+    GulcarNet::ShutdownSockets();
 }
 
 int main()

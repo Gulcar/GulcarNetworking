@@ -1,7 +1,4 @@
 #pragma once
 
-namespace GulcarNet
-{
-    void Init();
-    void Shutdown();
-}
+#include <GulcarNet/Socket.h>
+#include <GulcarNet/IPAddr.h>
