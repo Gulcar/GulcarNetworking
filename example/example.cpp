@@ -1,12 +1,18 @@
 #include <GulcarNet/GulcarNet.h>
+#include <GulcarNet/Client.h>
 #include <iostream>
 #include <string>
+#include <chrono>
+#include <thread>
 
 void ClientMain()
 {
     GulcarNet::InitSockets();
 
-    GulcarNet::Socket sock;
+    GulcarNet::Client client;
+    client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
+    
+    std::cout << (int)client.GetConnectionStatus() << "\n";
 
     while (true)
     {
@@ -14,23 +20,21 @@ void ClientMain()
         std::string text;
         std::getline(std::cin, text);
 
-        sock.SendTo(text.data(), text.length(), GulcarNet::IPAddr("127.0.0.1", 6543));
+        client.Send(text.c_str(), text.length());
 
         char buf[128] = {};
+        int bytes = -1;
 
-        GulcarNet::IPAddr addr;
-        int bytes = sock.RecvFrom(buf, sizeof(buf), &addr);
-
-        if (bytes == GulcarNet::SockErr_ConnRefused)
+        while (bytes < 0)
         {
-            std::cout << "disconnected!\n";
-            break;
+            bytes = client.Receive(buf, sizeof(buf));
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
         }
 
         std::cout << "received (" << bytes << " bytes): " << buf << "\n";
     }
 
-    sock.Close();
+    client.Disconnect();
     GulcarNet::ShutdownSockets();
 }
 
