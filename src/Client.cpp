@@ -8,12 +8,12 @@ namespace GulcarNet
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_serverAddr = serverAddr;
-        m_status = Status::Connecting;
+        SetStatus(Status::Connecting);
         // TODO: tukaj nek handshake
         if (true)
-            m_status = Status::Connected;
+            SetStatus(Status::Connected);
         else
-            m_status = Status::FailedToConnect;
+            SetStatus(Status::FailedToConnect);
     }
 
     void Client::Disconnect()
@@ -21,7 +21,7 @@ namespace GulcarNet
         // TODO: if m_socket is open ->
         m_socket->Close();
 
-        m_status = Status::Disconnected;
+        SetStatus(Status::Disconnected);
         // TODO: poslji serverju disconnect
     }
 
@@ -36,12 +36,28 @@ namespace GulcarNet
         int bytes = m_socket->RecvFrom(outBuffer, outBufferSize, &addr);
 
         if (bytes == SockErr_ConnRefused)
-            m_status = Status::Disconnected;
+            SetStatus(Status::Disconnected);
 
         if (bytes > 0 && addr != m_serverAddr)
             return Receive(outBuffer, outBufferSize);
 
         return bytes;
+    }
+
+    void Client::SetConnectionStatusCallback(StatusCallback callback)
+    {
+        m_statusCallback = callback;
+    }
+
+    void Client::SetStatus(Status status)
+    {
+        if (m_status == status)
+            return;
+
+        m_status = status;
+
+        if (m_statusCallback)
+            m_statusCallback(status);
     }
 }
 

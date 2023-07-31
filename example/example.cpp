@@ -10,11 +10,24 @@ void ClientMain()
     GulcarNet::InitSockets();
 
     GulcarNet::Client client;
-    client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
-    
-    std::cout << (int)client.GetConnectionStatus() << "\n";
 
-    while (true)
+    client.SetConnectionStatusCallback([](GulcarNet::Client::Status status) {
+        switch (status)
+        {
+        case GulcarNet::Client::Status::Connected:
+            std::cout << "Status: Connected\n"; break;
+        case GulcarNet::Client::Status::Disconnected:
+            std::cout << "Status: Disconnected\n"; break;
+        case GulcarNet::Client::Status::FailedToConnect:
+            std::cout << "Status: FailedToConnect\n"; break;
+        case GulcarNet::Client::Status::Connecting:
+            std::cout << "Status: Connecting\n"; break;
+        }
+    });
+
+    client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
+
+    while (client.IsConnected())
     {
         std::cout << "> ";
         std::string text;
@@ -25,7 +38,7 @@ void ClientMain()
         char buf[128] = {};
         int bytes = -1;
 
-        while (bytes < 0)
+        while (bytes < 0 && client.IsConnected())
         {
             bytes = client.Receive(buf, sizeof(buf));
             std::this_thread::sleep_for(std::chrono::milliseconds(25));
