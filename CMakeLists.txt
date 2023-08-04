@@ -11,6 +11,8 @@ add_library(${PROJECT_NAME}
     include/GulcarNet/IPAddr.h
     src/Client.cpp
     include/GulcarNet/Client.h
+    src/Server.cpp
+    include/GulcarNet/Server.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC

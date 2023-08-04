@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stdint.h>
+#include <functional>
+#include <ostream>
 
 namespace GulcarNet
 {
@@ -21,7 +23,19 @@ namespace GulcarNet
             return !(lhs == rhs);
         }
 
+        friend std::ostream& operator<<(std::ostream& os, IPAddr addr);
+        std::string ToString();
+
         uint32_t address;
         uint16_t port;
     };
 }
+
+template <>
+struct std::hash<GulcarNet::IPAddr>
+{
+    uint64_t operator()(const GulcarNet::IPAddr& addr) const
+    {
+        return ((uint64_t)addr.address << 16) | addr.port;
+    }
+};

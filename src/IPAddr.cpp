@@ -1,4 +1,5 @@
 #include <GulcarNet/IPAddr.h>
+#include <sstream>
 
 #ifdef _WIN32
     #include <WinSock2.h>
@@ -19,5 +20,22 @@ namespace GulcarNet
     {
         this->address = a + (b << 8) + (c << 16) + (d << 24);
         this->port = port;
+    }
+
+    std::ostream& operator<<(std::ostream& os, IPAddr addr)
+    {
+        os << (addr.address & 0xff) << '.';
+        os << ((addr.address >> 8) & 0xff) << '.';
+        os << ((addr.address >> 16) & 0xff) << '.';
+        os << ((addr.address >> 24) & 0xff) << ':';
+        os << addr.port;
+        return os;
+    }
+
+    std::string IPAddr::ToString()
+    {
+        std::stringstream ss;
+        ss << *this;
+        return ss.str();
     }
 }

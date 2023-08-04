@@ -1,9 +1,11 @@
 #include <GulcarNet/GulcarNet.h>
 #include <GulcarNet/Client.h>
+#include <GulcarNet/Server.h>
 #include <iostream>
 #include <string>
 #include <chrono>
 #include <thread>
+#include <mutex>
 
 void ClientMain()
 {
@@ -30,21 +32,35 @@ void ClientMain()
     });
 
     client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
+    client.Send("pozdrav", 7);
+
+    std::mutex inputMutex;
+
+    std::thread inputThr = std::thread([&client, &inputMutex]() {
+        while (client.IsConnected())
+        {
+            std::string text;
+            std::getline(std::cin, text);
+
+            if (text.length() > 0)
+            {
+                std::lock_guard<std::mutex> guard(inputMutex);
+                client.Send(text.c_str(), text.length());
+            }
+        }
+    });
 
     while (client.IsConnected())
     {
-        std::string text;
-        std::cout << "> ";
-        do {
-            std::getline(std::cin, text);
-        } while (text == "");
-
-        client.Send(text.c_str(), text.length());
         std::this_thread::sleep_for(std::chrono::milliseconds(17));
 
-        client.Process();
+        {
+            std::lock_guard<std::mutex> guard(inputMutex);
+            client.Process();
+        }
     }
 
+    inputThr.join();
     client.Disconnect();
     GulcarNet::ShutdownSockets();
 }
@@ -53,35 +69,28 @@ void ServerMain()
 {
     GulcarNet::InitSockets();
 
-    GulcarNet::Socket sock;
-    sock.Bind(6543);
+    GulcarNet::Server server;
+    server.SetClientConnectedCallback([](GulcarNet::Connection& conn) {
+        std::cout << "new connection: " << conn.GetAddr() << "\n";
+    });
+    server.SetClientDisconnectedCallback([](GulcarNet::Connection& conn) {
+        std::cout << "closed connection: " << conn.GetAddr() << "\n";
+    });
+    server.SetDataReceiveCallback([&server](void* data, size_t bytes, GulcarNet::Connection&) {
+        std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
+        server.SendToAll(data, bytes);
+    });
 
-    std::cout << "server started!\n";
+    server.Start(6543);
+    std::cout << "server started\n";
 
     while (true)
     {
-        GulcarNet::IPAddr clientAddr;
-
-        char buf[128] = {};
-
-        int bytes = sock.RecvFrom(buf, sizeof(buf), &clientAddr);
-
-        if (bytes == GulcarNet::SockErr_ConnRefused)
-        {
-            std::cout << "disconnected!\n";
-            break;
-        }
-        if (bytes < 0)
-        {
-            continue;
-        }
-
-        std::cout << "received (" << bytes << " bytes): " << buf << "\n";
-
-        sock.SendTo(buf, bytes, clientAddr);
+        server.Process();
+        std::this_thread::sleep_for(std::chrono::milliseconds(17));
     }
 
-    sock.Close();
+    server.Stop();
     GulcarNet::ShutdownSockets();
 }
 
