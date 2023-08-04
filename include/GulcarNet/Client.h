@@ -18,6 +18,7 @@ namespace GulcarNet
         };
 
         using StatusCallback = std::function<void(Status)>;
+        using DataReceiveCallback = std::function<void(void* data, size_t bytes)>;
 
     public:
         void Connect(const IPAddr& serverAddr);
@@ -31,9 +32,10 @@ namespace GulcarNet
             return Send(&data, sizeof(T));
         }
 
-        int Receive(void* outBuffer, size_t outBufferSize);
+        void Process();
 
         void SetConnectionStatusCallback(StatusCallback callback);
+        void SetDataReceiveCallback(DataReceiveCallback callback);
 
         inline bool IsConnected() const { return m_status == Status::Connected; }
         inline Status GetConnectionStatus() const { return m_status; }
@@ -44,7 +46,10 @@ namespace GulcarNet
     private:
         std::unique_ptr<class Socket> m_socket;
         IPAddr m_serverAddr;
+
         Status m_status = Status::Disconnected;
+
         StatusCallback m_statusCallback;
+        DataReceiveCallback m_dataReceiveCallback;
     };
 }

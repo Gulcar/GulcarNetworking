@@ -25,26 +25,24 @@ void ClientMain()
         }
     });
 
+    client.SetDataReceiveCallback([](void* data, size_t bytes) {
+        std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
+    });
+
     client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
 
     while (client.IsConnected())
     {
-        std::cout << "> ";
         std::string text;
-        std::getline(std::cin, text);
+        std::cout << "> ";
+        do {
+            std::getline(std::cin, text);
+        } while (text == "");
 
         client.Send(text.c_str(), text.length());
+        std::this_thread::sleep_for(std::chrono::milliseconds(17));
 
-        char buf[128] = {};
-        int bytes = -1;
-
-        while (bytes < 0 && client.IsConnected())
-        {
-            bytes = client.Receive(buf, sizeof(buf));
-            std::this_thread::sleep_for(std::chrono::milliseconds(25));
-        }
-
-        std::cout << "received (" << bytes << " bytes): " << buf << "\n";
+        client.Process();
     }
 
     client.Disconnect();

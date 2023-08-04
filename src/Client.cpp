@@ -1,6 +1,10 @@
 #include <GulcarNet/Client.h>
 #include <GulcarNet/Socket.h>
 
+#ifndef GULCAR_NET_RECV_BUF_SIZE
+#define GULCAR_NET_RECV_BUF_SIZE 512
+#endif
+
 namespace GulcarNet
 {
     void Client::Connect(const IPAddr& serverAddr)
@@ -30,23 +34,40 @@ namespace GulcarNet
         return m_socket->SendTo(data, bytes, m_serverAddr);
     }
 
-    int Client::Receive(void* outBuffer, size_t outBufferSize)
+    void Client::Process()
     {
-        IPAddr addr;
-        int bytes = m_socket->RecvFrom(outBuffer, outBufferSize, &addr);
+        char buf[GULCAR_NET_RECV_BUF_SIZE];
 
-        if (bytes == SockErr_ConnRefused)
-            SetStatus(Status::Disconnected);
+        for (int i = 0; i < 256; i++)
+        {
+            IPAddr addr;
+            int bytes = m_socket->RecvFrom(buf, sizeof(buf), &addr);
 
-        if (bytes > 0 && addr != m_serverAddr)
-            return Receive(outBuffer, outBufferSize);
+            if (bytes == SockErr_WouldBlock)
+                break;
+            else if (bytes == SockErr_ConnRefused)
+                SetStatus(Status::Disconnected);
 
-        return bytes;
+            if (bytes <= 0)
+                continue;
+            if (addr != m_serverAddr)
+                continue;
+
+            buf[bytes] = '\0';
+
+            if (m_dataReceiveCallback)
+                m_dataReceiveCallback(buf, bytes);
+        }
     }
 
     void Client::SetConnectionStatusCallback(StatusCallback callback)
     {
         m_statusCallback = callback;
+    }
+
+    void Client::SetDataReceiveCallback(DataReceiveCallback callback)
+    {
+        m_dataReceiveCallback = callback;
     }
 
     void Client::SetStatus(Status status)
