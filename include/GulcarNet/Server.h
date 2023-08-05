@@ -31,6 +31,9 @@ namespace GulcarNet
         using ConnectionsMap = std::unordered_map<IPAddr, Connection>;
 
     public:
+        Server();
+        ~Server();
+
         void Start(uint16_t port);
         void Stop();
 

@@ -1,4 +1,3 @@
-#include <GulcarNet/GulcarNet.h>
 #include <GulcarNet/Client.h>
 #include <GulcarNet/Server.h>
 #include <iostream>
@@ -9,8 +8,6 @@
 
 void ClientMain()
 {
-    GulcarNet::InitSockets();
-
     GulcarNet::Client client;
 
     client.SetConnectionStatusCallback([](GulcarNet::Client::Status status) {
@@ -62,13 +59,10 @@ void ClientMain()
 
     inputThr.join();
     client.Disconnect();
-    GulcarNet::ShutdownSockets();
 }
 
 void ServerMain()
 {
-    GulcarNet::InitSockets();
-
     GulcarNet::Server server;
     server.SetClientConnectedCallback([](GulcarNet::Connection& conn) {
         std::cout << "new connection: " << conn.GetAddr() << "\n";
@@ -91,7 +85,6 @@ void ServerMain()
     }
 
     server.Stop();
-    GulcarNet::ShutdownSockets();
 }
 
 int main()

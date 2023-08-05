@@ -21,6 +21,9 @@ namespace GulcarNet
         using DataReceiveCallback = std::function<void(void* data, size_t bytes)>;
 
     public:
+        Client();
+        ~Client();
+
         void Connect(const IPAddr& serverAddr);
         void Disconnect();
 

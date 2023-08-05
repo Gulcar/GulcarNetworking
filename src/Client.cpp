@@ -1,5 +1,5 @@
 #include <GulcarNet/Client.h>
-#include <GulcarNet/Socket.h>
+#include "Socket.h"
 #include <cassert>
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
@@ -8,6 +8,16 @@
 
 namespace GulcarNet
 {
+    Client::Client()
+    {
+        GulcarNet::InitSockets();
+    }
+
+    Client::~Client()
+    {
+        GulcarNet::ShutdownSockets();
+    }
+
     void Client::Connect(const IPAddr& serverAddr)
     {
         if (m_socket)
@@ -30,7 +40,6 @@ namespace GulcarNet
     {
         assert(m_socketOpen && "GulcarNet: Client Connect not called!");
 
-        // TODO: if m_socket is open ->
         m_socket->Close();
 
         SetStatus(Status::Disconnected);

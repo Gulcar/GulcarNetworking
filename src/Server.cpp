@@ -1,5 +1,5 @@
 #include <GulcarNet/Server.h>
-#include <GulcarNet/Socket.h>
+#include "Socket.h"
 #include <cassert>
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
@@ -8,6 +8,16 @@
 
 namespace GulcarNet
 {
+    Server::Server()
+    {
+        GulcarNet::InitSockets();
+    }
+
+    Server::~Server()
+    {
+        GulcarNet::ShutdownSockets();
+    }
+
     void Server::Start(uint16_t port)
     {
         if (m_socket)
