@@ -1,6 +1,7 @@
 #pragma once
 
 #include <GulcarNet/IPAddr.h>
+#include <GulcarNet/ChannelType.h>
 #include <functional>
 #include <stdint.h>
 #include <unordered_map>
@@ -55,6 +56,8 @@ namespace Net
 
         void Process();
 
+        void SetChannel(uint16_t id, ChannelType type);
+
         void SetClientConnectedCallback(ClientConnectedCallback callback);
         void SetClientDisconnectedCallback(ClientDisconnectedCallback callback);
         void SetDataReceiveCallback(DataReceiveCallback callback);
@@ -70,6 +73,8 @@ namespace Net
         ConnectionsMap m_connections;
 
         bool m_socketOpen = false;
+
+        std::vector<struct Channel> m_channels;
 
         ClientConnectedCallback m_clientConnectedCallback;
         ClientDisconnectedCallback m_clientDisconnectedCallback;

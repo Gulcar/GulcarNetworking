@@ -1,8 +1,10 @@
 #pragma once
 
 #include <GulcarNet/IPAddr.h>
+#include <GulcarNet/ChannelType.h>
 #include <memory>
 #include <functional>
+#include <vector>
 
 namespace Net
 {
@@ -27,15 +29,17 @@ namespace Net
         void Connect(const IPAddr& serverAddr);
         void Disconnect();
 
-        int Send(const void* data, size_t bytes);
+        int Send(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
 
         template<typename T>
-        int Send(const T& data)
+        int Send(const T& data, uint16_t channelId, uint16_t msgType)
         {
-            return Send(&data, sizeof(T));
+            return Send(&data, sizeof(T), channelId, msgType);
         }
 
         void Process();
+
+        void SetChannel(uint16_t id, ChannelType type);
 
         void SetConnectionStatusCallback(StatusCallback callback);
         void SetDataReceiveCallback(DataReceiveCallback callback);
@@ -46,12 +50,18 @@ namespace Net
     private:
         void SetStatus(Status status);
 
+        int SendUnreliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
+        int SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
+        int SendReliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
+
     private:
         std::unique_ptr<class Socket> m_socket;
         IPAddr m_serverAddr;
 
         Status m_status = Status::Disconnected;
         bool m_socketOpen = false;
+
+        std::vector<struct Channel> m_channels;
 
         StatusCallback m_statusCallback;
         DataReceiveCallback m_dataReceiveCallback;

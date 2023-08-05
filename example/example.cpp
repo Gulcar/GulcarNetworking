@@ -28,8 +28,12 @@ void ClientMain()
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
     });
 
+    client.SetChannel(0, Net::ChannelType::Unreliable);
+    client.SetChannel(1, Net::ChannelType::UnreliableDiscardOld);
+    client.SetChannel(2, Net::ChannelType::Reliable);
+
     client.Connect(Net::IPAddr("127.0.0.1", 6543));
-    client.Send("pozdrav", 7);
+    client.Send("pozdrav", 7, 2, 0);
 
     std::mutex inputMutex;
 
@@ -42,7 +46,7 @@ void ClientMain()
             if (text.length() > 0)
             {
                 std::lock_guard<std::mutex> guard(inputMutex);
-                client.Send(text.c_str(), text.length());
+                client.Send(text.c_str(), text.length(), 2, 0);
             }
         }
     });
@@ -74,6 +78,10 @@ void ServerMain()
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
         server.SendToAll(data, bytes);
     });
+
+    server.SetChannel(0, Net::ChannelType::Unreliable);
+    server.SetChannel(1, Net::ChannelType::UnreliableDiscardOld);
+    server.SetChannel(2, Net::ChannelType::Reliable);
 
     server.Start(6543);
     std::cout << "server started\n";
