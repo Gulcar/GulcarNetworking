@@ -4,7 +4,7 @@
 #include <memory>
 #include <functional>
 
-namespace GulcarNet
+namespace Net
 {
     class Client
     {

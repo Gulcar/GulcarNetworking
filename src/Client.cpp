@@ -6,16 +6,16 @@
 #define GULCAR_NET_RECV_BUF_SIZE 512
 #endif
 
-namespace GulcarNet
+namespace Net
 {
     Client::Client()
     {
-        GulcarNet::InitSockets();
+        Net::InitSockets();
     }
 
     Client::~Client()
     {
-        GulcarNet::ShutdownSockets();
+        Net::ShutdownSockets();
     }
 
     void Client::Connect(const IPAddr& serverAddr)

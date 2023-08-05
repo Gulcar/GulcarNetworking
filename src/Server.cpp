@@ -6,16 +6,16 @@
 #define GULCAR_NET_RECV_BUF_SIZE 512
 #endif
 
-namespace GulcarNet
+namespace Net
 {
     Server::Server()
     {
-        GulcarNet::InitSockets();
+        Net::InitSockets();
     }
 
     Server::~Server()
     {
-        GulcarNet::ShutdownSockets();
+        Net::ShutdownSockets();
     }
 
     void Server::Start(uint16_t port)

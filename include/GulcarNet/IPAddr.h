@@ -4,7 +4,7 @@
 #include <functional>
 #include <ostream>
 
-namespace GulcarNet
+namespace Net
 {
     struct IPAddr
     {
@@ -32,9 +32,9 @@ namespace GulcarNet
 }
 
 template <>
-struct std::hash<GulcarNet::IPAddr>
+struct std::hash<Net::IPAddr>
 {
-    uint64_t operator()(const GulcarNet::IPAddr& addr) const
+    uint64_t operator()(const Net::IPAddr& addr) const
     {
         return ((uint64_t)addr.address << 16) | addr.port;
     }

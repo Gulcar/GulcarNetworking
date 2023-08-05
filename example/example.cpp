@@ -8,18 +8,18 @@
 
 void ClientMain()
 {
-    GulcarNet::Client client;
+    Net::Client client;
 
-    client.SetConnectionStatusCallback([](GulcarNet::Client::Status status) {
+    client.SetConnectionStatusCallback([](Net::Client::Status status) {
         switch (status)
         {
-        case GulcarNet::Client::Status::Connected:
+        case Net::Client::Status::Connected:
             std::cout << "Status: Connected\n"; break;
-        case GulcarNet::Client::Status::Disconnected:
+        case Net::Client::Status::Disconnected:
             std::cout << "Status: Disconnected\n"; break;
-        case GulcarNet::Client::Status::FailedToConnect:
+        case Net::Client::Status::FailedToConnect:
             std::cout << "Status: FailedToConnect\n"; break;
-        case GulcarNet::Client::Status::Connecting:
+        case Net::Client::Status::Connecting:
             std::cout << "Status: Connecting\n"; break;
         }
     });
@@ -28,7 +28,7 @@ void ClientMain()
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
     });
 
-    client.Connect(GulcarNet::IPAddr("127.0.0.1", 6543));
+    client.Connect(Net::IPAddr("127.0.0.1", 6543));
     client.Send("pozdrav", 7);
 
     std::mutex inputMutex;
@@ -63,14 +63,14 @@ void ClientMain()
 
 void ServerMain()
 {
-    GulcarNet::Server server;
-    server.SetClientConnectedCallback([](GulcarNet::Connection& conn) {
+    Net::Server server;
+    server.SetClientConnectedCallback([](Net::Connection& conn) {
         std::cout << "new connection: " << conn.GetAddr() << "\n";
     });
-    server.SetClientDisconnectedCallback([](GulcarNet::Connection& conn) {
+    server.SetClientDisconnectedCallback([](Net::Connection& conn) {
         std::cout << "closed connection: " << conn.GetAddr() << "\n";
     });
-    server.SetDataReceiveCallback([&server](void* data, size_t bytes, GulcarNet::Connection&) {
+    server.SetDataReceiveCallback([&server](void* data, size_t bytes, Net::Connection&) {
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
         server.SendToAll(data, bytes);
     });

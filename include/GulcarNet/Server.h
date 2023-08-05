@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <memory>
 
-namespace GulcarNet
+namespace Net
 {
     class Connection
     {

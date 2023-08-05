@@ -8,7 +8,7 @@
     #include <arpa/inet.h>
 #endif
 
-namespace GulcarNet
+namespace Net
 {
     IPAddr::IPAddr(const char* addr, uint16_t port)
     {

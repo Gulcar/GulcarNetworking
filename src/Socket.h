@@ -12,7 +12,7 @@
     #define INVALID_SOCKET -1
 #endif
 
-namespace GulcarNet
+namespace Net
 {
     void InitSockets();
     void ShutdownSockets();

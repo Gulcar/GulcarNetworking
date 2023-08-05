@@ -25,7 +25,7 @@
 #endif
 
 
-namespace GulcarNet
+namespace Net
 {
     void PrintError();
     void PrintErrorWS(int error);
