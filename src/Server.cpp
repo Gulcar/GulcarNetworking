@@ -1,5 +1,6 @@
 #include <GulcarNet/Server.h>
 #include <GulcarNet/Socket.h>
+#include <cassert>
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
 #define GULCAR_NET_RECV_BUF_SIZE 512
@@ -9,18 +10,28 @@ namespace GulcarNet
 {
     void Server::Start(uint16_t port)
     {
+        if (m_socket)
+            m_socket->Close();
+
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_socket->Bind(port);
+
+        m_socketOpen = true;
     }
 
     void Server::Stop()
     {
+        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+
         m_socket->Close();
+        m_socketOpen = false;
     }
 
     void Server::SendTo(const void* data, size_t bytes, Connection& conn)
     {
+        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+
         // TODO: nared neki z intom ki ga dobis tukaj nazaj (poglej tudi v client send)
         m_socket->SendTo(data, bytes, conn.GetAddr());
     }
@@ -35,6 +46,8 @@ namespace GulcarNet
 
     void Server::Process()
     {
+        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         for (int i = 0; i < 256; i++)
@@ -50,7 +63,7 @@ namespace GulcarNet
                 connIt = InsertClient(addr);
 
             if (bytes == SockErr_ConnRefused)
-                DisconnectClient(connIt->second);
+                DisconnectClient(connIt);
 
             if (bytes <= 0)
                 continue;
@@ -90,7 +103,11 @@ namespace GulcarNet
         return res.first;
     }
 
-    void Server::DisconnectClient(Connection& conn)
+    void Server::DisconnectClient(ConnectionsMap::iterator it)
     {
+        if (m_clientDisconnectedCallback)
+            m_clientDisconnectedCallback(it->second);
+
+        m_connections.erase(it);
     }
 }

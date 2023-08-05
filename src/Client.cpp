@@ -1,5 +1,6 @@
 #include <GulcarNet/Client.h>
 #include <GulcarNet/Socket.h>
+#include <cassert>
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
 #define GULCAR_NET_RECV_BUF_SIZE 512
@@ -9,9 +10,14 @@ namespace GulcarNet
 {
     void Client::Connect(const IPAddr& serverAddr)
     {
+        if (m_socket)
+            m_socket->Close();
+
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_serverAddr = serverAddr;
+        m_socketOpen = true;
+
         SetStatus(Status::Connecting);
         // TODO: tukaj nek handshake
         if (true)
@@ -22,6 +28,8 @@ namespace GulcarNet
 
     void Client::Disconnect()
     {
+        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
+
         // TODO: if m_socket is open ->
         m_socket->Close();
 
@@ -31,11 +39,14 @@ namespace GulcarNet
 
     int Client::Send(const void* data, size_t bytes)
     {
+        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
         return m_socket->SendTo(data, bytes, m_serverAddr);
     }
 
     void Client::Process()
     {
+        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
+
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         for (int i = 0; i < 256; i++)

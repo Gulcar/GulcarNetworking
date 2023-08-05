@@ -60,11 +60,13 @@ namespace GulcarNet
 
     private:
         ConnectionsMap::iterator InsertClient(IPAddr addr);
-        void DisconnectClient(Connection& conn);
+        void DisconnectClient(ConnectionsMap::iterator it);
 
     private:
         std::unique_ptr<class Socket> m_socket;
         ConnectionsMap m_connections;
+
+        bool m_socketOpen = false;
 
         ClientConnectedCallback m_clientConnectedCallback;
         ClientDisconnectedCallback m_clientDisconnectedCallback;

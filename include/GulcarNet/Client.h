@@ -48,6 +48,7 @@ namespace GulcarNet
         IPAddr m_serverAddr;
 
         Status m_status = Status::Disconnected;
+        bool m_socketOpen = false;
 
         StatusCallback m_statusCallback;
         DataReceiveCallback m_dataReceiveCallback;
