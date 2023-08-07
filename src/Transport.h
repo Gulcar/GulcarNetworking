@@ -4,53 +4,60 @@
 #include <GulcarNet/Other.h>
 #include <stdint.h>
 #include <bitset>
-#include <queue>
+#include <deque>
 #include <chrono>
 #include <unordered_map>
 
 namespace Net
 {
-    using Clock = std::chrono::steady_clock;
-
-    struct PacketUnreliable
-    {
-        SendType sendType;
-        uint16_t msgType;
-
-        // data ...
-    };
-
-    struct PacketUnreliableDiscardOld
-    {
-        SendType sendType;
-        uint16_t msgType;
-
-        uint16_t seqNum;
-
-        // data ...
-    };
-
-    struct PacketReliable
-    {
-        SendType sendType;
-        uint16_t msgType;
-
-        uint16_t seqNum;
-        uint16_t ackNum;
-        uint32_t ackBits;
-
-        // data ...
-    };
-
-    struct WaitingForAck
-    {
-        Clock::time_point timeSent;
-        PacketReliable* packet;
-    };
-
     // handles sending and receving packets with reliability
     class Transport
     {
+        using Clock = std::chrono::steady_clock;
+
+        struct PacketUnreliable
+        {
+            SendType sendType;
+            uint16_t msgType;
+
+            // data ...
+        };
+
+        struct PacketUnreliableDiscardOld
+        {
+            SendType sendType;
+            uint16_t msgType;
+
+            uint16_t seqNum;
+
+            // data ...
+        };
+
+        struct PacketReliable
+        {
+            SendType sendType;
+            uint16_t msgType;
+
+            uint16_t seqNum;
+            uint16_t ackNum;
+            uint32_t ackBits;
+
+            // data ...
+        };
+
+        struct WaitingForAck
+        {
+            Clock::time_point timeSent;
+            PacketReliable* packet;
+            size_t packetSize; // total size (header + body)
+            bool acked = false;
+        };
+
+        enum ReservedMsgType : uint16_t
+        {
+            MsgType_AcksOnly = 65000, // no data (used by SendExtraAcks)
+        };
+
     public:
         Transport(class Socket* socket, IPAddr addr)
             : m_socket(socket), m_addr(addr) { }
@@ -59,6 +66,9 @@ namespace Net
 
         struct ReceiveData { void* data; size_t bytes; uint16_t msgType; bool callback; };
         ReceiveData Receive(void* buf, size_t bytes);
+
+        void SendExtraAcks();
+        void RetrySending();
 
     private:
         void SendUnreliable(const void* data, size_t bytes, uint16_t msgType);
@@ -81,8 +91,10 @@ namespace Net
         // for all Reliable
         Sequences m_sequences;
 
+        bool m_needToSendAck = false;
+
         std::bitset<1024> m_receivedBits;
-        std::queue<WaitingForAck> m_waitingForAck; // TODO: te poslji se enkrat ce jih ne dobis
+        std::deque<WaitingForAck> m_waitingForAck;
 
         class Socket* m_socket;
         IPAddr m_addr;

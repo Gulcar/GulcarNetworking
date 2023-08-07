@@ -59,6 +59,8 @@ namespace Net
     {
         assert(m_socketOpen && "GulcarNet: Client Connect not called!");
 
+        m_transport->SendExtraAcks();
+
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         for (int i = 0; i < 256; i++)
@@ -76,6 +78,10 @@ namespace Net
             if (addr != m_serverAddr)
                 continue;
 
+#ifdef GULCAR_NET_SIM_PACKET_LOSS
+            if (rand() % 100 < 3)
+                continue;
+#endif
             buf[bytes] = '\0';
 
             Transport::ReceiveData receiveData = m_transport->Receive(buf, bytes);
@@ -83,6 +89,8 @@ namespace Net
             if (receiveData.callback && m_dataReceiveCallback)
                 m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType);
         }
+
+        m_transport->RetrySending();
     }
 
     void Client::SetConnectionStatusCallback(StatusCallback callback)

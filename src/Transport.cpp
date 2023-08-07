@@ -51,6 +51,81 @@ namespace Net
         return data;
     }
 
+    void Transport::SendExtraAcks()
+    {
+        if (m_needToSendAck == false)
+            return;
+        m_needToSendAck = false;
+
+        std::cout << "sending extra ack\n";
+
+        PacketReliable packet;
+        packet.sendType = SendType::Reliable;
+        packet.msgType = MsgType_AcksOnly;
+        packet.seqNum = ++m_sequences.localSeqNum;
+        packet.ackNum = m_sequences.remoteSeqNum;
+
+        // TODO: v tem filu najdi svtari ki se ponavljajo
+        // kot je tole racunanje ackBitov
+        packet.ackBits = 0;
+        for (int i = 0; i < 32; i++)
+        {
+            int seq = m_sequences.remoteSeqNum - 1 - i;
+            if (seq < 0) break;
+
+            if (m_receivedBits[seq % 1024] == true)
+                packet.ackBits |= (1 << i);
+        }
+
+        int res = m_socket->SendTo(&packet, sizeof(PacketReliable), m_addr);
+        assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
+    }
+
+    void Transport::RetrySending()
+    {
+        while (!m_waitingForAck.empty())
+        {
+            WaitingForAck& waiting = m_waitingForAck.front();
+
+            if (waiting.acked)
+            {
+                std::cout << "acked: " << waiting.packet->seqNum << "\n";
+                delete[] waiting.packet;
+                m_waitingForAck.pop_front();
+                break;
+            }
+
+            auto duration = Clock::now() - waiting.timeSent;
+            if (duration < std::chrono::milliseconds(100))
+                break;
+
+            std::cout << "resending: " << waiting.packet->seqNum << "\n";
+
+            waiting.packet->ackNum = m_sequences.remoteSeqNum;
+
+            waiting.packet->ackBits = 0;
+            for (int i = 0; i < 32; i++)
+            {
+                int seq = m_sequences.remoteSeqNum - 1 - i;
+                if (seq < 0) break;
+
+                if (m_receivedBits[seq % 1024] == true)
+                    waiting.packet->ackBits |= (1 << i);
+            }
+
+            int res = m_socket->SendTo(waiting.packet, waiting.packetSize, m_addr);
+            assert(res == waiting.packetSize && "GulcarNet: failed to send!");
+
+            m_waitingForAck.push_back({
+                Clock::now(),
+                waiting.packet,
+                waiting.packetSize
+            });
+
+            m_waitingForAck.pop_front();
+        }
+    }
+
     void Transport::SendUnreliable(const void* data, size_t bytes, uint16_t msgType)
     {
         using Packet = PacketUnreliable;
@@ -102,11 +177,14 @@ namespace Net
                 packet->ackBits |= (1 << i);
         }
 
+        m_needToSendAck = false;
+
         memcpy((char*)packet + sizeof(Packet), data, bytes);
 
-        m_waitingForAck.push({
+        m_waitingForAck.push_back({
             Clock::now(),
-            packet
+            packet,
+            sizeof(Packet) + bytes
         });
 
         int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
@@ -140,7 +218,7 @@ namespace Net
         ReceiveData data;
 
         int diff = (int)packet->seqNum - (int)remoteSeq;
-        if ((diff > 0 && diff < 16.384) || (diff < 49.152))
+        if ((diff > 0 && diff < 16.384) || (diff < -49.152))
         {
             remoteSeq = packet->seqNum;
 
@@ -168,7 +246,7 @@ namespace Net
         std::cout << "ackBits: " << std::bitset<32>(packet->ackBits) << "\n";
 
         int diff = (int)packet->seqNum - (int)m_sequences.remoteSeqNum;
-        if ((diff > 0 && diff < 16.384) || (diff < 49.152))
+        if ((diff > 0 && diff < 16.384) || (diff < -49.152))
         {
             // izbrisi m_receivedBits ki jih ne bomo vec posiljali kot ack
             int from = std::max(m_sequences.remoteSeqNum - 32, 0);
@@ -179,13 +257,46 @@ namespace Net
             m_sequences.remoteSeqNum = packet->seqNum;
         }
 
+        if (m_receivedBits[packet->seqNum % 1024] == true)
+        {
+            std::cout << "already received packet " << packet->seqNum << "\n";
+            m_needToSendAck = true;
+            ReceiveData data;
+            data.callback = false;
+            return data;
+        }
+
         m_receivedBits[packet->seqNum % 1024] = true;
+
+        if (packet->msgType != MsgType_AcksOnly)
+            m_needToSendAck = true;
+
+        for (auto it = m_waitingForAck.begin(); it != m_waitingForAck.end(); it++)
+        {
+            if (it->acked)
+                continue;
+
+            if (it->packet->seqNum == packet->ackNum)
+            {
+                it->acked = true;
+                continue;
+            }
+
+            int diff = (int)packet->ackNum - (int)it->packet->seqNum;
+            if (diff < 0 || diff >= 32) continue;
+
+            it->acked = (packet->ackBits >> (diff-1)) & 1;
+        }
 
         ReceiveData data;
         data.data = (char*)buf + sizeof(PacketReliable);
         data.bytes = bytes - sizeof(PacketReliable);
         data.msgType = packet->msgType;
         data.callback = true;
+
+        if (packet->msgType == MsgType_AcksOnly)
+            data.callback = false;
+
         return data;
     }
 }

@@ -20,6 +20,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     include/
 )
 
+#add_compile_definitions(GULCAR_NET_SIM_PACKET_LOSS)
+
 option(GULCAR_NET_COMPILE_EXAMPLE "Should the example for GulcarNetworking be compiled" OFF)
 
 if (GULCAR_NET_COMPILE_EXAMPLE)

@@ -62,6 +62,9 @@ namespace Net
     {
         assert(m_socketOpen && "GulcarNet: Server Start not called!");
 
+        for (auto it = m_connections.begin(); it != m_connections.end(); it++)
+            it->second.m_transport->SendExtraAcks();
+
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         for (int i = 0; i < 256; i++)
@@ -82,6 +85,10 @@ namespace Net
             if (bytes <= 0)
                 continue;
 
+#ifdef GULCAR_NET_SIM_PACKET_LOSS
+            if (rand() % 100 < 3)
+                continue;
+#endif
             buf[bytes] = '\0';
 
             Connection& conn = connIt->second;
@@ -90,6 +97,9 @@ namespace Net
             if (receiveData.callback && m_dataReceiveCallback)
                 m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType, conn);
         }
+
+        for (auto it = m_connections.begin(); it != m_connections.end(); it++)
+            it->second.m_transport->RetrySending();
     }
 
     void Server::SetClientConnectedCallback(ClientConnectedCallback callback)
