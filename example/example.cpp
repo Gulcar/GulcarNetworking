@@ -29,7 +29,7 @@ void ClientMain()
     });
 
     client.Connect(Net::IPAddr("127.0.0.1", 6543));
-    client.Send("pozdrav", 7, Net::Unreliable);
+    client.Send(Net::Buf("pozdrav"), 7, Net::Unreliable);
 
     std::mutex inputMutex;
 
@@ -42,7 +42,7 @@ void ClientMain()
             if (text.length() > 0)
             {
                 std::lock_guard<std::mutex> guard(inputMutex);
-                client.Send(text.c_str(), text.length(), 6, Net::Reliable);
+                client.Send(Net::Buf(text), 6, Net::Reliable);
             }
         }
     });
@@ -73,7 +73,7 @@ void ServerMain()
     });
     server.SetDataReceiveCallback([&server](void* data, size_t bytes, uint16_t msgType, Net::Connection& conn) {
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
-        server.SendToAll(data, bytes, msgType, Net::Reliable);
+        server.SendToAll(Net::Buf(data, bytes), msgType, Net::Reliable);
     });
 
     server.Start(6543);

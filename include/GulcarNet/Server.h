@@ -41,21 +41,8 @@ namespace Net
         void Start(uint16_t port);
         void Stop();
 
-        void SendTo(const void* data, size_t bytes, uint16_t msgType, SendType reliable, Connection& conn);
-
-        template<typename T>
-        void SendTo(const T& data, uint16_t msgType, SendType reliable, Connection& conn)
-        {
-            SendTo(&data, sizeof(T), msgType, reliable, conn);
-        }
-
-        void SendToAll(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
-
-        template<typename T>
-        void SendToAll(const T& data, uint16_t msgType, SendType reliable)
-        {
-            SendToAll(&data, sizeof(T), msgType, reliable);
-        }
+        void SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn);
+        void SendToAll(Buf buf, uint16_t msgType, SendType reliable);
 
         void Process();
 

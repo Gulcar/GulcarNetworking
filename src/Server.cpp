@@ -45,21 +45,21 @@ namespace Net
         m_socketOpen = false;
     }
 
-    void Server::SendTo(const void* data, size_t bytes, uint16_t msgType, SendType reliable, Connection& conn)
+    void Server::SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn)
     {
         assert(m_socketOpen && "GulcarNet: Server Start not called!");
 
         // TODO: nared neki z intom ki ga dobis tukaj nazaj (poglej tudi v client send)
         //m_socket->SendTo(data, bytes, conn.GetAddr());
 
-        conn.m_transport->Send(data, bytes, msgType, reliable);
+        conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
-    void Server::SendToAll(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
+    void Server::SendToAll(Buf buf, uint16_t msgType, SendType reliable)
     {
         for (auto& connIt : m_connections)
         {
-            SendTo(data, bytes, msgType, reliable, connIt.second);
+            SendTo(buf, msgType, reliable, connIt.second);
         }
     }
 

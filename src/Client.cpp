@@ -49,10 +49,10 @@ namespace Net
         // TODO: poslji serverju disconnect
     }
 
-    int Client::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
+    int Client::Send(Buf buf, uint16_t msgType, SendType reliable)
     {
         assert(m_socketOpen && "GulcarNet: Client Connect not called!");
-        return m_transport->Send(data, bytes, msgType, reliable);
+        return m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
     void Client::Process()

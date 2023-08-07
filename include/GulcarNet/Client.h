@@ -29,13 +29,7 @@ namespace Net
         void Connect(const IPAddr& serverAddr);
         void Disconnect();
 
-        int Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
-
-        template<typename T>
-        int Send(const T& data, uint16_t msgType, SendType reliable)
-        {
-            return Send(&data, sizeof(T), msgType, reliable);
-        }
+        int Send(Buf buf, uint16_t msgType, SendType reliable);
 
         void Process();
 
