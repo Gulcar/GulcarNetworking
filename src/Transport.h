@@ -55,15 +55,15 @@ namespace Net
         Transport(class Socket* socket, IPAddr addr)
             : m_socket(socket), m_addr(addr) { }
 
-        int Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
+        void Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
 
         struct ReceiveData { void* data; size_t bytes; uint16_t msgType; bool callback; };
         ReceiveData Receive(void* buf, size_t bytes);
 
     private:
-        int SendUnreliable(const void* data, size_t bytes, uint16_t msgType);
-        int SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType);
-        int SendReliable(const void* data, size_t bytes, uint16_t msgType);
+        void SendUnreliable(const void* data, size_t bytes, uint16_t msgType);
+        void SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType);
+        void SendReliable(const void* data, size_t bytes, uint16_t msgType);
 
         ReceiveData ReceiveUnreliable(void* buf, size_t bytes);
         ReceiveData ReceiveUnreliableDiscardOld(void* buf, size_t bytes);

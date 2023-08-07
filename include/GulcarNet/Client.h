@@ -29,7 +29,7 @@ namespace Net
         void Connect(const IPAddr& serverAddr);
         void Disconnect();
 
-        int Send(Buf buf, uint16_t msgType, SendType reliable);
+        void Send(Buf buf, uint16_t msgType, SendType reliable);
 
         void Process();
 

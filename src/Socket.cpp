@@ -111,10 +111,6 @@ namespace Net
         socklen_t addrLen = sizeof(sockaddr_in);
 #endif
         sockaddr_in saddr = {};
-        // TODO: spodnjih 3 linov mogoce nerabim
-        saddr.sin_family = AF_INET;
-        saddr.sin_port = htons(outFromAddr->port);
-        saddr.sin_addr.s_addr = outFromAddr->address;
 
         int bytesReceived = recvfrom(m_socket, (char*)outBuffer, outBufferSize, 0, (sockaddr*)&saddr, &addrLen);
 

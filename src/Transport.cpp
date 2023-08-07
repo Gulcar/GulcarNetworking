@@ -11,22 +11,25 @@ namespace Net
 {
     using ReceiveData = Transport::ReceiveData;
 
-    int Transport::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
+    void Transport::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
     {
         switch (reliable)
         {
         case SendType::Unreliable:
-            return SendUnreliable(data, bytes, msgType);
+            SendUnreliable(data, bytes, msgType);
+            return;
 
         case SendType::UnreliableDiscardOld:
-            return SendUnreliableDiscardOld(data, bytes, msgType);
+            SendUnreliableDiscardOld(data, bytes, msgType);
+            return;
 
         case SendType::Reliable:
-            return SendReliable(data, bytes, msgType);
+            SendReliable(data, bytes, msgType);
+            return;
         }
 
         assert(false && "GulcarNet: SendType doesnt match!");
-        return -1;
+        return;
     }
 
     ReceiveData Transport::Receive(void* buf, size_t bytes)
@@ -48,7 +51,7 @@ namespace Net
         return data;
     }
 
-    int Transport::SendUnreliable(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendUnreliable(const void* data, size_t bytes, uint16_t msgType)
     {
         using Packet = PacketUnreliable;
         char buf[GULCAR_NET_RECV_BUF_SIZE];
@@ -59,10 +62,11 @@ namespace Net
 
         memcpy((char*)packet + sizeof(Packet), data, bytes);
 
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
     }
 
-    int Transport::SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType)
     {
         using Packet = PacketUnreliableDiscardOld;
         char buf[GULCAR_NET_RECV_BUF_SIZE];
@@ -74,10 +78,11 @@ namespace Net
 
         memcpy((char*)packet + sizeof(Packet), data, bytes);
 
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
     }
 
-    int Transport::SendReliable(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendReliable(const void* data, size_t bytes, uint16_t msgType)
     {
         using Packet = PacketReliable;
 
@@ -104,7 +109,8 @@ namespace Net
             packet
         });
 
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
+        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
     }
 
     

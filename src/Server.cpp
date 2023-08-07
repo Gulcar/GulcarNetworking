@@ -2,7 +2,6 @@
 #include "Socket.h"
 #include "Transport.h"
 #include <cassert>
-#include <iostream> // TODO: ne includaj iostream
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
 #define GULCAR_NET_RECV_BUF_SIZE 512
@@ -48,10 +47,6 @@ namespace Net
     void Server::SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn)
     {
         assert(m_socketOpen && "GulcarNet: Server Start not called!");
-
-        // TODO: nared neki z intom ki ga dobis tukaj nazaj (poglej tudi v client send)
-        //m_socket->SendTo(data, bytes, conn.GetAddr());
-
         conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
