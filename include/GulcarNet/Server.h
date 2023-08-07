@@ -1,7 +1,7 @@
 #pragma once
 
 #include <GulcarNet/IPAddr.h>
-#include <GulcarNet/ChannelType.h>
+#include <GulcarNet/Other.h>
 #include <functional>
 #include <stdint.h>
 #include <unordered_map>
@@ -19,8 +19,10 @@ namespace Net
         inline const IPAddr& GetAddr() const { return m_addr; }
 
     private:
+        Connection(class Socket* socket, IPAddr addr);
+
         IPAddr m_addr;
-        uint32_t m_seqNum = 0;
+        std::unique_ptr<class Transport> m_transport;
     };
 
     class Server
@@ -28,7 +30,8 @@ namespace Net
     public:
         using ClientConnectedCallback = std::function<void(Connection&)>;
         using ClientDisconnectedCallback = std::function<void(Connection&)>;
-        using DataReceiveCallback = std::function<void(void* data, size_t bytes, Connection&)>;
+        using DataReceiveCallback = std::function<void(void* data, size_t bytes, uint16_t msgType, Connection&)>;
+
         using ConnectionsMap = std::unordered_map<IPAddr, Connection>;
 
     public:
@@ -38,25 +41,23 @@ namespace Net
         void Start(uint16_t port);
         void Stop();
 
-        void SendTo(const void* data, size_t bytes, Connection& conn);
+        void SendTo(const void* data, size_t bytes, uint16_t msgType, SendType reliable, Connection& conn);
 
         template<typename T>
-        void SendTo(const T& data, Connection& conn)
+        void SendTo(const T& data, uint16_t msgType, SendType reliable, Connection& conn)
         {
-            SendTo(&data, sizeof(T), conn);
+            SendTo(&data, sizeof(T), msgType, reliable, conn);
         }
 
-        void SendToAll(const void* data, size_t bytes);
+        void SendToAll(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
 
         template<typename T>
-        void SendToAll(const T& data)
+        void SendToAll(const T& data, uint16_t msgType, SendType reliable)
         {
-            SendToAll(&data, sizeof(T));
+            SendToAll(&data, sizeof(T), msgType, reliable);
         }
 
         void Process();
-
-        void SetChannel(uint16_t id, ChannelType type);
 
         void SetClientConnectedCallback(ClientConnectedCallback callback);
         void SetClientDisconnectedCallback(ClientDisconnectedCallback callback);
@@ -73,8 +74,6 @@ namespace Net
         ConnectionsMap m_connections;
 
         bool m_socketOpen = false;
-
-        std::vector<struct Channel> m_channels;
 
         ClientConnectedCallback m_clientConnectedCallback;
         ClientDisconnectedCallback m_clientDisconnectedCallback;

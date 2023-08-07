@@ -32,7 +32,7 @@ namespace Net
         return os;
     }
 
-    std::string IPAddr::ToString()
+    std::string IPAddr::ToString() const
     {
         std::stringstream ss;
         ss << *this;

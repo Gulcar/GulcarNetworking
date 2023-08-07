@@ -1,6 +1,6 @@
 #include <GulcarNet/Client.h>
 #include "Socket.h"
-#include "Packet.h"
+#include "Transport.h"
 #include <cassert>
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
@@ -29,19 +29,14 @@ namespace Net
         m_serverAddr = serverAddr;
         m_socketOpen = true;
 
+        m_transport = std::make_unique<Transport>(m_socket.get(), m_serverAddr);
+
         SetStatus(Status::Connecting);
         // TODO: tukaj nek handshake
         if (true)
             SetStatus(Status::Connected);
         else
             SetStatus(Status::FailedToConnect);
-
-        // default channels
-        if (m_channels.empty())
-        {
-            m_channels.emplace_back(ChannelType::Unreliable);
-            m_channels.emplace_back(ChannelType::Reliable);
-        }
     }
 
     void Client::Disconnect()
@@ -54,26 +49,10 @@ namespace Net
         // TODO: poslji serverju disconnect
     }
 
-    int Client::Send(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType)
+    int Client::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
     {
         assert(m_socketOpen && "GulcarNet: Client Connect not called!");
-
-        Channel& channel = m_channels[channelId];
-
-        switch (channel.chType)
-        {
-        case ChannelType::Unreliable:
-            return SendUnreliable(data, bytes, channelId, msgType);
-
-        case ChannelType::UnreliableDiscardOld:
-            return SendUnreliableDiscardOld(data, bytes, channelId, msgType);
-
-        case ChannelType::Reliable:
-            return SendReliable(data, bytes, channelId, msgType);
-        }
-
-        assert(false && "GulcarNet: ChannelType doest match!");
-        return -1;
+        return m_transport->Send(data, bytes, msgType, reliable);
     }
 
     void Client::Process()
@@ -99,17 +78,11 @@ namespace Net
 
             buf[bytes] = '\0';
 
-            if (m_dataReceiveCallback)
-                m_dataReceiveCallback(buf, bytes);
+            Transport::ReceiveData receiveData = m_transport->Receive(buf, bytes);
+
+            if (receiveData.callback && m_dataReceiveCallback)
+                m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType);
         }
-    }
-
-    void Client::SetChannel(uint16_t id, ChannelType type)
-    {
-        if (m_channels.size() <= id)
-            m_channels.resize(id + 1);
-
-        m_channels[id] = Channel(type);
     }
 
     void Client::SetConnectionStatusCallback(StatusCallback callback)
@@ -131,58 +104,6 @@ namespace Net
 
         if (m_statusCallback)
             m_statusCallback(status);
-    }
-
-    int Client::SendUnreliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType)
-    {
-        using Packet = PacketUnreliable;
-        char buf[GULCAR_NET_RECV_BUF_SIZE];
-
-        Packet* packet = (Packet*)buf;
-        packet->channelId = channelId;
-        packet->type = msgType;
-
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
-
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_serverAddr);
-    }
-
-    int Client::SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType)
-    {
-        using Packet = PacketUnreliableDiscardOld;
-        char buf[GULCAR_NET_RECV_BUF_SIZE];
-        Channel& channel = m_channels[channelId];
-
-        Packet* packet = (Packet*)buf;
-        packet->channelId = channelId;
-        packet->type = msgType;
-        packet->seqNum = channel.localSeqNum++;
-
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
-
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_serverAddr);
-    }
-
-    int Client::SendReliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType)
-    {
-        using Packet = PacketReliable;
-        Channel& channel = m_channels[channelId];
-
-        Packet* packet = (Packet*)(new char[sizeof(Packet) + bytes]);
-        packet->channelId = channelId;
-        packet->type = msgType;
-        packet->seqNum = channel.localSeqNum++;
-        packet->ackNum = channel.remoteSeqNum;
-        packet->ackBits = 0; // TODO
-
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
-
-        channel.waitingForAck.push({
-            Clock::now(),
-            packet
-        });
-
-        return m_socket->SendTo(packet, sizeof(Packet) + bytes, m_serverAddr);
     }
 }
 

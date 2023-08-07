@@ -1,6 +1,6 @@
 #include <GulcarNet/Server.h>
 #include "Socket.h"
-#include "Packet.h"
+#include "Transport.h"
 #include <cassert>
 #include <iostream> // TODO: ne includaj iostream
 
@@ -10,6 +10,12 @@
 
 namespace Net
 {
+    Connection::Connection(Socket* socket, IPAddr addr)
+    {
+        m_addr = addr;
+        m_transport = std::make_unique<Transport>(socket, m_addr);
+    }
+
     Server::Server()
     {
         Net::InitSockets();
@@ -28,15 +34,7 @@ namespace Net
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_socket->Bind(port);
-
         m_socketOpen = true;
-
-        // default channels
-        if (m_channels.empty())
-        {
-            m_channels.emplace_back(ChannelType::Unreliable);
-            m_channels.emplace_back(ChannelType::Reliable);
-        }
     }
 
     void Server::Stop()
@@ -47,19 +45,21 @@ namespace Net
         m_socketOpen = false;
     }
 
-    void Server::SendTo(const void* data, size_t bytes, Connection& conn)
+    void Server::SendTo(const void* data, size_t bytes, uint16_t msgType, SendType reliable, Connection& conn)
     {
         assert(m_socketOpen && "GulcarNet: Server Start not called!");
 
         // TODO: nared neki z intom ki ga dobis tukaj nazaj (poglej tudi v client send)
-        m_socket->SendTo(data, bytes, conn.GetAddr());
+        //m_socket->SendTo(data, bytes, conn.GetAddr());
+
+        conn.m_transport->Send(data, bytes, msgType, reliable);
     }
 
-    void Server::SendToAll(const void* data, size_t bytes)
+    void Server::SendToAll(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
     {
         for (auto& connIt : m_connections)
         {
-            SendTo(data, bytes, connIt.second);
+            SendTo(data, bytes, msgType, reliable, connIt.second);
         }
     }
 
@@ -84,62 +84,17 @@ namespace Net
             if (bytes == SockErr_ConnRefused)
                 DisconnectClient(connIt);
 
-            if (bytes < 2)
+            if (bytes <= 0)
                 continue;
 
             buf[bytes] = '\0';
 
-            uint16_t channelId = *(uint16_t*)buf;
-            if (channelId >= m_channels.size())
-                continue;
-            Channel& channel = m_channels[channelId];
+            Connection& conn = connIt->second;
+            Transport::ReceiveData receiveData = conn.m_transport->Receive(buf, bytes);
 
-            switch (channel.chType)
-            {
-            case ChannelType::Unreliable:
-            {
-                PacketUnreliable* packet = (PacketUnreliable*)buf;
-                std::cout << "received unreliable packet\n";
-                std::cout << "channelId: " << packet->channelId << "\n";
-                std::cout << "type: " << packet->type << "\n";
-                if (m_dataReceiveCallback)
-                    m_dataReceiveCallback(buf + sizeof(PacketUnreliable), bytes - sizeof(PacketUnreliable), connIt->second);
-                break;
-            }
-            case ChannelType::UnreliableDiscardOld:
-            {
-                PacketUnreliableDiscardOld* packet = (PacketUnreliableDiscardOld*)buf;
-                std::cout << "received unreliable discard old packet\n";
-                std::cout << "channelId: " << packet->channelId << "\n";
-                std::cout << "type: " << packet->type << "\n";
-                std::cout << "seqNum: " << packet->seqNum << "\n";
-                if (m_dataReceiveCallback)
-                    m_dataReceiveCallback(buf + sizeof(PacketUnreliableDiscardOld), bytes - sizeof(PacketUnreliableDiscardOld), connIt->second);
-                break;
-            }
-            case ChannelType::Reliable:
-            {
-                PacketReliable* packet = (PacketReliable*)buf;
-                std::cout << "received reliable packet\n";
-                std::cout << "channelId: " << packet->channelId << "\n";
-                std::cout << "type: " << packet->type << "\n";
-                std::cout << "seqNum: " << packet->seqNum << "\n";
-                std::cout << "ackNum: " << packet->ackNum << "\n";
-                std::cout << "ackBits: " << packet->ackBits << "\n";
-                if (m_dataReceiveCallback)
-                    m_dataReceiveCallback(buf + sizeof(PacketUnreliableDiscardOld), bytes - sizeof(PacketUnreliableDiscardOld), connIt->second);
-                break;
-            }
-            }
+            if (receiveData.callback && m_dataReceiveCallback)
+                m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType, conn);
         }
-    }
-
-    void Server::SetChannel(uint16_t id, ChannelType type)
-    {
-        if (m_channels.size() <= id)
-            m_channels.resize(id + 1);
-
-        m_channels[id] = Channel(type);
     }
 
     void Server::SetClientConnectedCallback(ClientConnectedCallback callback)
@@ -159,9 +114,8 @@ namespace Net
 
     Server::ConnectionsMap::iterator Server::InsertClient(IPAddr addr)
     {
-        Connection conn;
-        conn.m_addr = addr;
-        auto res = m_connections.insert({ addr, conn });
+        Connection conn(m_socket.get(), addr);
+        auto res = m_connections.insert(std::make_pair(addr, std::move(conn)));
         auto it = res.first;
 
         if (m_clientConnectedCallback)

@@ -24,16 +24,12 @@ void ClientMain()
         }
     });
 
-    client.SetDataReceiveCallback([](void* data, size_t bytes) {
+    client.SetDataReceiveCallback([](void* data, size_t bytes, uint16_t msgType) {
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
     });
 
-    client.SetChannel(0, Net::ChannelType::Unreliable);
-    client.SetChannel(1, Net::ChannelType::UnreliableDiscardOld);
-    client.SetChannel(2, Net::ChannelType::Reliable);
-
     client.Connect(Net::IPAddr("127.0.0.1", 6543));
-    client.Send("pozdrav", 7, 2, 0);
+    client.Send("pozdrav", 7, Net::Unreliable);
 
     std::mutex inputMutex;
 
@@ -46,7 +42,7 @@ void ClientMain()
             if (text.length() > 0)
             {
                 std::lock_guard<std::mutex> guard(inputMutex);
-                client.Send(text.c_str(), text.length(), 2, 0);
+                client.Send(text.c_str(), text.length(), 6, Net::Reliable);
             }
         }
     });
@@ -68,20 +64,17 @@ void ClientMain()
 void ServerMain()
 {
     Net::Server server;
+
     server.SetClientConnectedCallback([](Net::Connection& conn) {
         std::cout << "new connection: " << conn.GetAddr() << "\n";
     });
     server.SetClientDisconnectedCallback([](Net::Connection& conn) {
         std::cout << "closed connection: " << conn.GetAddr() << "\n";
     });
-    server.SetDataReceiveCallback([&server](void* data, size_t bytes, Net::Connection&) {
+    server.SetDataReceiveCallback([&server](void* data, size_t bytes, uint16_t msgType, Net::Connection& conn) {
         std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
-        server.SendToAll(data, bytes);
+        server.SendToAll(data, bytes, msgType, Net::Reliable);
     });
-
-    server.SetChannel(0, Net::ChannelType::Unreliable);
-    server.SetChannel(1, Net::ChannelType::UnreliableDiscardOld);
-    server.SetChannel(2, Net::ChannelType::Reliable);
 
     server.Start(6543);
     std::cout << "server started\n";

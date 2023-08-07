@@ -24,7 +24,7 @@ namespace Net
         }
 
         friend std::ostream& operator<<(std::ostream& os, IPAddr addr);
-        std::string ToString();
+        std::string ToString() const;
 
         uint32_t address;
         uint16_t port;

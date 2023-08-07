@@ -3,16 +3,17 @@ cmake_minimum_required(VERSION 3.16)
 project(GulcarNetworking)
 
 add_library(${PROJECT_NAME}
+    include/GulcarNet/Client.h
+    include/GulcarNet/IPAddr.h
+    include/GulcarNet/Other.h
+    include/GulcarNet/Server.h
+    src/Client.cpp
+    src/IPAddr.cpp
+    src/Server.cpp
     src/Socket.cpp
     src/Socket.h
-    src/IPAddr.cpp
-    include/GulcarNet/IPAddr.h
-    src/Client.cpp
-    include/GulcarNet/Client.h
-    src/Server.cpp
-    include/GulcarNet/Server.h
-    src/Packet.h
-    include/GulcarNet/ChannelType.h
+    src/Transport.cpp
+    src/Transport.h
 )
 
 target_include_directories(${PROJECT_NAME} PUBLIC
