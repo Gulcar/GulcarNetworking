@@ -112,6 +112,11 @@ namespace Net
         }
     }
 
+    void Transport::SendConnectRequest()
+    {
+        SendReliable(nullptr, 0, MsgType_ConnectRequest);
+    }
+
     void Transport::SendUnreliable(const void* data, size_t bytes, uint16_t msgType)
     {
         using Packet = PacketUnreliable;

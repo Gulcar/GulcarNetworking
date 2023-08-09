@@ -56,6 +56,7 @@ namespace Net
         enum ReservedMsgType : uint16_t
         {
             MsgType_AcksOnly = 65000, // no data (used by SendExtraAcks)
+            MsgType_ConnectRequest, // no data (used by SendConnectRequest)
         };
 
     public:
@@ -69,6 +70,8 @@ namespace Net
 
         void SendExtraAcks();
         void RetrySending();
+
+        void SendConnectRequest();
 
     private:
         void SendUnreliable(const void* data, size_t bytes, uint16_t msgType);

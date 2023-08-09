@@ -32,11 +32,8 @@ namespace Net
         m_transport = std::make_unique<Transport>(m_socket.get(), m_serverAddr);
 
         SetStatus(Status::Connecting);
-        // TODO: tukaj nek handshake
-        if (true)
-            SetStatus(Status::Connected);
-        else
-            SetStatus(Status::FailedToConnect);
+        m_transport->SendConnectRequest();
+        m_connReqTime = Clock::now();
     }
 
     void Client::Disconnect()
@@ -44,9 +41,7 @@ namespace Net
         assert(m_socketOpen && "GulcarNet: Client Connect not called!");
 
         m_socket->Close();
-
         SetStatus(Status::Disconnected);
-        // TODO: poslji serverju disconnect
     }
 
     void Client::Send(Buf buf, uint16_t msgType, SendType reliable)
@@ -57,7 +52,8 @@ namespace Net
 
     void Client::Process()
     {
-        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
+        if (!m_socketOpen || m_status == Status::FailedToConnect)
+            return;
 
         m_transport->SendExtraAcks();
 
@@ -71,7 +67,14 @@ namespace Net
             if (bytes == SockErr_WouldBlock)
                 break;
             else if (bytes == SockErr_ConnRefused)
-                SetStatus(Status::Disconnected);
+            {
+                if (m_status == Status::Connecting)
+                    SetStatus(Status::FailedToConnect);
+                else
+                    SetStatus(Status::Disconnected);
+
+                break;
+            }
 
             if (bytes <= 0)
                 continue;
@@ -86,8 +89,17 @@ namespace Net
 
             Transport::ReceiveData receiveData = m_transport->Receive(buf, bytes);
 
+            if (m_status == Status::Connecting)
+                SetStatus(Status::Connected);
+
             if (receiveData.callback && m_dataReceiveCallback)
                 m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType);
+        }
+
+        if (m_status == Status::Connecting &&
+            Clock::now() - m_connReqTime > std::chrono::seconds(3))
+        {
+            SetStatus(Status::FailedToConnect);
         }
 
         m_transport->RetrySending();

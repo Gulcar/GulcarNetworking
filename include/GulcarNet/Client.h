@@ -5,11 +5,14 @@
 #include <memory>
 #include <functional>
 #include <vector>
+#include <chrono>
 
 namespace Net
 {
     class Client
     {
+        using Clock = std::chrono::steady_clock;
+
     public:
         enum class Status
         {
@@ -37,14 +40,11 @@ namespace Net
         void SetDataReceiveCallback(DataReceiveCallback callback);
 
         inline bool IsConnected() const { return m_status == Status::Connected; }
+        inline bool IsConnecting() const { return m_status == Status::Connecting; }
         inline Status GetConnectionStatus() const { return m_status; }
 
     private:
         void SetStatus(Status status);
-
-        int SendUnreliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
-        int SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
-        int SendReliable(const void* data, size_t bytes, uint16_t channelId, uint16_t msgType);
 
     private:
         std::unique_ptr<class Socket> m_socket;
@@ -53,6 +53,7 @@ namespace Net
 
         Status m_status = Status::Disconnected;
         bool m_socketOpen = false;
+        Clock::time_point m_connReqTime;
 
         StatusCallback m_statusCallback;
         DataReceiveCallback m_dataReceiveCallback;

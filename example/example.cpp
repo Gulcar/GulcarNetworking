@@ -34,7 +34,7 @@ void ClientMain()
     std::mutex inputMutex;
 
     std::thread inputThr = std::thread([&client, &inputMutex]() {
-        while (client.IsConnected())
+        while (client.IsConnected() || client.IsConnecting())
         {
             std::string text;
             std::getline(std::cin, text);
@@ -47,7 +47,7 @@ void ClientMain()
         }
     });
 
-    while (client.IsConnected())
+    while (client.IsConnected() || client.IsConnecting())
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(7));
 
