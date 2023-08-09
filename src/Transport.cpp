@@ -1,7 +1,13 @@
 #include "Transport.h"
 #include "Socket.h"
 #include <cassert>
-#include <iostream> // TODO: ne iostream
+
+#ifdef GULCAR_NET_DEBUG_OUT
+    #include <iostream>
+    #define DEBUG(x) std::cout << x
+#else
+    #define DEBUG(x)
+#endif
 
 #ifndef GULCAR_NET_RECV_BUF_SIZE
 #define GULCAR_NET_RECV_BUF_SIZE 512
@@ -45,7 +51,7 @@ namespace Net
         else if (sendType == SendType::Reliable && bytes >= sizeof(PacketReliable))
             return ReceiveReliable(buf, bytes);
 
-        std::cout << "invalid packet\n";
+        DEBUG("invalid packet\n");
         ReceiveData data;
         data.callback = false;
         return data;
@@ -57,25 +63,14 @@ namespace Net
             return;
         m_needToSendAck = false;
 
-        std::cout << "sending extra ack\n";
+        DEBUG("sending extra ack\n");
 
         PacketReliable packet;
         packet.sendType = SendType::Reliable;
         packet.msgType = MsgType_AcksOnly;
         packet.seqNum = ++m_sequences.localSeqNum;
         packet.ackNum = m_sequences.remoteSeqNum;
-
-        // TODO: v tem filu najdi svtari ki se ponavljajo
-        // kot je tole racunanje ackBitov
-        packet.ackBits = 0;
-        for (int i = 0; i < 32; i++)
-        {
-            int seq = m_sequences.remoteSeqNum - 1 - i;
-            if (seq < 0) break;
-
-            if (m_receivedBits[seq % 1024] == true)
-                packet.ackBits |= (1 << i);
-        }
+        packet.ackBits = GetAckBits();
 
         int res = m_socket->SendTo(&packet, sizeof(PacketReliable), m_addr);
         assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
@@ -89,7 +84,7 @@ namespace Net
 
             if (waiting.acked)
             {
-                std::cout << "acked: " << waiting.packet->seqNum << "\n";
+                DEBUG("acked: " << waiting.packet->seqNum << "\n");
                 delete[] waiting.packet;
                 m_waitingForAck.pop_front();
                 break;
@@ -99,19 +94,10 @@ namespace Net
             if (duration < std::chrono::milliseconds(100))
                 break;
 
-            std::cout << "resending: " << waiting.packet->seqNum << "\n";
+            DEBUG("resending: " << waiting.packet->seqNum << "\n");
 
             waiting.packet->ackNum = m_sequences.remoteSeqNum;
-
-            waiting.packet->ackBits = 0;
-            for (int i = 0; i < 32; i++)
-            {
-                int seq = m_sequences.remoteSeqNum - 1 - i;
-                if (seq < 0) break;
-
-                if (m_receivedBits[seq % 1024] == true)
-                    waiting.packet->ackBits |= (1 << i);
-            }
+            waiting.packet->ackBits = GetAckBits();
 
             int res = m_socket->SendTo(waiting.packet, waiting.packetSize, m_addr);
             assert(res == waiting.packetSize && "GulcarNet: failed to send!");
@@ -166,16 +152,7 @@ namespace Net
         packet->msgType = msgType;
         packet->seqNum = ++m_sequences.localSeqNum;
         packet->ackNum = m_sequences.remoteSeqNum;
-
-        packet->ackBits = 0;
-        for (int i = 0; i < 32; i++)
-        {
-            int seq = m_sequences.remoteSeqNum - 1 - i;
-            if (seq < 0) break;
-
-            if (m_receivedBits[seq % 1024] == true)
-                packet->ackBits |= (1 << i);
-        }
+        packet->ackBits = GetAckBits();
 
         m_needToSendAck = false;
 
@@ -195,8 +172,8 @@ namespace Net
     ReceiveData Transport::ReceiveUnreliable(void* buf, size_t bytes)
     {
         PacketUnreliable* packet = (PacketUnreliable*)buf;
-        std::cout << "received unreliable packet\n";
-        std::cout << "msgType: " << packet->msgType << "\n";
+        DEBUG("received unreliable packet\n");
+        DEBUG("msgType: " << packet->msgType << "\n");
 
         ReceiveData data;
         data.data = (char*)buf + sizeof(PacketUnreliable);
@@ -209,9 +186,9 @@ namespace Net
     ReceiveData Transport::ReceiveUnreliableDiscardOld(void* buf, size_t bytes)
     {
         PacketUnreliableDiscardOld* packet = (PacketUnreliableDiscardOld*)buf;
-        std::cout << "received unreliable discard old packet\n";
-        std::cout << "msgType: " << packet->msgType << "\n";
-        std::cout << "seqNum: " << packet->seqNum << "\n";
+        DEBUG("received unreliable discard old packet\n");
+        DEBUG("msgType: " << packet->msgType << "\n");
+        DEBUG("seqNum: " << packet->seqNum << "\n");
 
         uint16_t& remoteSeq = m_seqMap[packet->msgType].remoteSeqNum;
 
@@ -229,7 +206,7 @@ namespace Net
         }
         else
         {
-            std::cout << "packet discarded\n";
+            DEBUG("packet discarded\n");
             data.callback = false;
         }
 
@@ -239,11 +216,11 @@ namespace Net
     ReceiveData Transport::ReceiveReliable(void* buf, size_t bytes)
     {
         PacketReliable* packet = (PacketReliable*)buf;
-        std::cout << "received reliable packet\n";
-        std::cout << "msgType: " << packet->msgType << "\n";
-        std::cout << "seqNum: " << packet->seqNum << "\n";
-        std::cout << "ackNum: " << packet->ackNum << "\n";
-        std::cout << "ackBits: " << std::bitset<32>(packet->ackBits) << "\n";
+        DEBUG("received reliable packet\n");
+        DEBUG("msgType: " << packet->msgType << "\n");
+        DEBUG("seqNum: " << packet->seqNum << "\n");
+        DEBUG("ackNum: " << packet->ackNum << "\n");
+        DEBUG("ackBits: " << std::bitset<32>(packet->ackBits) << "\n");
 
         int diff = (int)packet->seqNum - (int)m_sequences.remoteSeqNum;
         if ((diff > 0 && diff < 16.384) || (diff < -49.152))
@@ -259,7 +236,7 @@ namespace Net
 
         if (m_receivedBits[packet->seqNum % 1024] == true)
         {
-            std::cout << "already received packet " << packet->seqNum << "\n";
+            DEBUG("already received packet " << packet->seqNum << "\n");
             m_needToSendAck = true;
             ReceiveData data;
             data.callback = false;
@@ -298,5 +275,21 @@ namespace Net
             data.callback = false;
 
         return data;
+    }
+
+    uint32_t Transport::GetAckBits()
+    {
+        uint32_t bits = 0;
+
+        for (int i = 0; i < 32; i++)
+        {
+            int seq = m_sequences.remoteSeqNum - 1 - i;
+            if (seq < 0) break;
+
+            if (m_receivedBits[seq % 1024] == true)
+                bits |= (1 << i);
+        }
+
+        return bits;
     }
 }

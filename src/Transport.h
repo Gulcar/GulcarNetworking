@@ -79,6 +79,8 @@ namespace Net
         ReceiveData ReceiveUnreliableDiscardOld(void* buf, size_t bytes);
         ReceiveData ReceiveReliable(void* buf, size_t bytes);
 
+        uint32_t GetAckBits();
+
     private:
         struct Sequences
         {

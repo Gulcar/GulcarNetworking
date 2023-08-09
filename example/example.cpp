@@ -49,7 +49,7 @@ void ClientMain()
 
     while (client.IsConnected())
     {
-        std::this_thread::sleep_for(std::chrono::milliseconds(17));
+        std::this_thread::sleep_for(std::chrono::milliseconds(7));
 
         {
             std::lock_guard<std::mutex> guard(inputMutex);
@@ -82,7 +82,7 @@ void ServerMain()
     while (true)
     {
         server.Process();
-        std::this_thread::sleep_for(std::chrono::milliseconds(17));
+        std::this_thread::sleep_for(std::chrono::milliseconds(7));
     }
 
     server.Stop();

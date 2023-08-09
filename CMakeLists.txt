@@ -21,6 +21,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 #add_compile_definitions(GULCAR_NET_SIM_PACKET_LOSS)
+#add_compile_definitions(GULCAR_NET_DEBUG_OUT)
 
 option(GULCAR_NET_COMPILE_EXAMPLE "Should the example for GulcarNetworking be compiled" OFF)
 
