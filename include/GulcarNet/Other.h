@@ -4,16 +4,24 @@
 #include <string>
 #include <cstring>
 
+/**
+* \file
+*/
+
 namespace Net
 {
+    /** describes the send reliability */
     enum SendType : uint8_t
     {
-        Unreliable, // just packets (packet loss, out of order)
-        UnreliableDiscardOld, // will discard the packet if a newer packet with same msgType already arrived (still packet loss)
-        Reliable, // will resend if no ack (ordered)
+        /** just packets (packet loss, out of order) */
+        Unreliable,
+        /** will discard the packet if a newer packet with same msgType already arrived (still packet loss) */
+        UnreliableDiscardOld,
+        /** will resend if no ack (ordered) */
+        Reliable,
     };
 
-    // const buffer
+    /** const buffer (only refers to data) */
     struct Buf
     {
         Buf(const void* data, size_t bytes)
@@ -27,7 +35,9 @@ namespace Net
         Buf(const T& data)
             : data(&data), bytes(sizeof(T)) {}
 
+        /** pointer to the refering data */
         const void* data;
+        /** size of the data in bytes */
         size_t bytes;
     };
 }

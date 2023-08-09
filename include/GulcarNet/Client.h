@@ -9,11 +9,13 @@
 
 namespace Net
 {
+    /** network interface for clients */
     class Client
     {
         using Clock = std::chrono::steady_clock;
 
     public:
+        /** The connection status. Use GetConnectionStatus() to retrieve or bind a function to SetConnectionStatusCallback(). */
         enum class Status
         {
             Disconnected,
@@ -29,18 +31,47 @@ namespace Net
         Client();
         ~Client();
 
+        /**
+        * Tries connecting to the server.
+        * 
+        * You will need to call Process() for this to work.
+        * Use SetDataReceiveCallback() to be notified of the connection status.
+        */
         void Connect(const IPAddr& serverAddr);
+
+        /**
+        * Disconnects from the server.
+        * 
+        * You can still call Process() and you can call Connect() again.
+        */
         void Disconnect();
 
+        /**
+        * Sends a message to the server.
+        * @param buf message to send
+        * @param msgType type of the message usually to identify the struct of data you are sending
+        * @param reliable enum of how to manage reliability
+        */
         void Send(Buf buf, uint16_t msgType, SendType reliable);
 
+        /**
+        * Call this every frame.
+        * 
+        * It will receive data on the socket and manage acks.
+        * Your callbacks will be called in this function.
+        */
         void Process();
 
+        /** Sets the callback which will receive status updates. Will be called from Process(). */
         void SetConnectionStatusCallback(StatusCallback callback);
+        /** Sets the callback which will receive data that was received from the server. Will be called from Process(). */
         void SetDataReceiveCallback(DataReceiveCallback callback);
 
+        /** Returns true if GetConnectionStatus() is Status::Connected. */
         inline bool IsConnected() const { return m_status == Status::Connected; }
+        /** Returns true if GetConnectionStatus() is Status::Connecting. */
         inline bool IsConnecting() const { return m_status == Status::Connecting; }
+        /** Returns the current Status of the connection. Consider using SetConnectionStatusCallback(). */
         inline Status GetConnectionStatus() const { return m_status; }
 
     private:

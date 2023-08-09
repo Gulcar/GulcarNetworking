@@ -6,10 +6,14 @@
 
 namespace Net
 {
+    /** struct that holds an IP address */
     struct IPAddr
     {
+        /** default constructor: address 0.0.0.0, port 0 */
         IPAddr() { address = 0; port = 0; }
+        /** example: Net::IPAddr("192.168.1.25", 6969) */
         IPAddr(const char* addr, uint16_t port);
+        /** example: Net::IPAddr(192, 168, 1, 25, 6969) */
         IPAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
 
         friend inline bool operator==(const IPAddr& lhs, const IPAddr& rhs)
@@ -26,7 +30,9 @@ namespace Net
         friend std::ostream& operator<<(std::ostream& os, IPAddr addr);
         std::string ToString() const;
 
+        /** ip address in network byte order */
         uint32_t address;
+        /** port in host byte order */
         uint16_t port;
     };
 }
