@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string>
 #include <cstring>
+#include <string_view>
 
 /**
 * \file
@@ -28,7 +29,7 @@ namespace Net
             : data(data), bytes(bytes) {}
         Buf(const char* data)
             : data(data), bytes(strlen(data)) {}
-        Buf(const std::string& data)
+        Buf(std::string_view data)
             : data(data.data()), bytes(data.length()) {}
 
         template<typename T>
