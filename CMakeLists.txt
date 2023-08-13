@@ -23,6 +23,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 #add_compile_definitions(GULCAR_NET_SIM_PACKET_LOSS)
 #add_compile_definitions(GULCAR_NET_DEBUG_OUT)
 
+set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
+
 option(GULCAR_NET_COMPILE_EXAMPLE "Should the example for GulcarNetworking be compiled" OFF)
 
 if (GULCAR_NET_COMPILE_EXAMPLE)

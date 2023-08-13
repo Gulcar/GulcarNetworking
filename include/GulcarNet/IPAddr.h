@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <functional>
 #include <ostream>
+#include <string_view>
 
 namespace Net
 {
@@ -13,6 +14,9 @@ namespace Net
         IPAddr() { address = 0; port = 0; }
         /** example: Net::IPAddr("192.168.1.25", 6969) */
         IPAddr(const char* addr, uint16_t port);
+        /** example: Net::IPAddr("192.168.1.25", 6969) */
+        IPAddr(std::string_view addr, uint16_t port)
+            : IPAddr(addr.data(), port) {}
         /** example: Net::IPAddr(192, 168, 1, 25, 6969) */
         IPAddr(uint8_t a, uint8_t b, uint8_t c, uint8_t d, uint16_t port);
 
