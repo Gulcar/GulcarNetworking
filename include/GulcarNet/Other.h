@@ -4,6 +4,8 @@
 #include <string>
 #include <cstring>
 #include <string_view>
+#include <vector>
+#include <type_traits>
 
 /**
 * \file
@@ -31,10 +33,19 @@ namespace Net
             : data(data), bytes(strlen(data)) {}
         Buf(std::string_view data)
             : data(data.data()), bytes(data.length()) {}
+        Buf(const std::string& data)
+            : data(data.data()), bytes(data.length()) {}
+
+        template<typename T>
+        Buf(const std::vector<T>& data)
+            : data(data.data()), bytes(data.size() * sizeof(T)) {}
 
         template<typename T>
         Buf(const T& data)
-            : data(&data), bytes(sizeof(T)) {}
+            : data(&data), bytes(sizeof(T))
+        {
+            static_assert(std::is_trivial<T>::value, "Net::Buf should only be used with plain old data types!");
+        }
 
         /** pointer to the refering data */
         const void* data;

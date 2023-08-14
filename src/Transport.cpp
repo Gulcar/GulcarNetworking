@@ -276,7 +276,8 @@ namespace Net
         data.msgType = packet->msgType;
         data.callback = true;
 
-        if (packet->msgType == MsgType_AcksOnly)
+        if (packet->msgType == MsgType_AcksOnly ||
+            packet->msgType == MsgType_ConnectRequest)
             data.callback = false;
 
         return data;
