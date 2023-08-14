@@ -75,12 +75,17 @@ namespace Net
             if (bytes == SockErr_WouldBlock)
                 break;
 
-            auto& connIt = m_connections.find(addr);
-            if (connIt == m_connections.end())
-                connIt = InsertClient(addr);
+            auto connIt = m_connections.find(addr);
 
             if (bytes == SockErr_ConnRefused)
-                DisconnectClient(connIt);
+            {
+                if (connIt != m_connections.end())
+                    DisconnectClient(m_connections.find(addr));
+                continue;
+            }
+
+            if (connIt == m_connections.end())
+                connIt = InsertClient(addr);
 
             if (bytes <= 0)
                 continue;
