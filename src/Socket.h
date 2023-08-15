@@ -39,7 +39,8 @@ namespace Net
 
     enum SockErr
     {
-        SockErr_WouldBlock = -40,
-        SockErr_ConnRefused = -41,
+        SockErr_WouldBlock = -10000,
+        SockErr_ConnRefused,
+        SockErr_PermissionDenied,
     };
 }

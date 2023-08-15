@@ -83,7 +83,6 @@ namespace Net
         IPAddr m_serverAddr;
 
         Status m_status = Status::Disconnected;
-        bool m_socketOpen = false;
         Clock::time_point m_connReqTime;
 
         StatusCallback m_statusCallback;

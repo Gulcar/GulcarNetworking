@@ -149,8 +149,18 @@ namespace Net
 
         if (bytesSent == -1)
         {
+#ifdef _WIN32
+            int error = WSAGetLastError();
+            if (error == WSAEACCES) return SockErr_PermissionDenied;
+
+            PrintErrorWS(error);
+            throw std::runtime_error("ERROR: sendto failed!");
+#else
+            if (errno == EACCES) return SockErr_PermissionDenied;
+
             PrintError();
             throw std::runtime_error("ERROR: sendto failed!");
+#endif
         }
 
         return bytesSent;

@@ -27,7 +27,6 @@ namespace Net
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_serverAddr = serverAddr;
-        m_socketOpen = true;
 
         m_transport = std::make_unique<Transport>(m_socket.get(), m_serverAddr);
 
@@ -38,21 +37,24 @@ namespace Net
 
     void Client::Disconnect()
     {
-        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
+        if (m_socket)
+        {
+            m_socket->Close();
+            m_socket = nullptr;
+        }
 
-        m_socket->Close();
         SetStatus(Status::Disconnected);
     }
 
     void Client::Send(Buf buf, uint16_t msgType, SendType reliable)
     {
-        assert(m_socketOpen && "GulcarNet: Client Connect not called!");
+        assert(m_socket && "GulcarNet: Client Connect not called!");
         m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
     void Client::Process()
     {
-        if (!m_socketOpen || m_status == Status::FailedToConnect)
+        if (!m_socket || m_status == Status::FailedToConnect || m_status == Status::Disconnected)
             return;
 
         m_transport->SendExtraAcks();
