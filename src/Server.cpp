@@ -47,6 +47,7 @@ namespace Net
     void Server::SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn)
     {
         assert(m_socketOpen && "GulcarNet: Server Start not called!");
+        m_stats.AddPacketSent(buf.bytes);
         conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
@@ -99,12 +100,16 @@ namespace Net
             Connection& conn = connIt->second;
             Transport::ReceiveData receiveData = conn.m_transport->Receive(buf, bytes);
 
+            m_stats.AddPacketReceived(bytes);
+
             if (receiveData.callback && m_dataReceiveCallback)
                 m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType, conn);
         }
 
         for (auto it = m_connections.begin(); it != m_connections.end(); it++)
             it->second.m_transport->RetrySending();
+
+        m_stats.UpdateTime();
     }
 
     void Server::SetClientConnectedCallback(ClientConnectedCallback callback)

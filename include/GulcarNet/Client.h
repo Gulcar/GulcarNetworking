@@ -74,6 +74,8 @@ namespace Net
         /** Returns the current Status of the connection. Consider using SetConnectionStatusCallback(). */
         inline Status GetConnectionStatus() const { return m_status; }
 
+        inline const Statistics& GetStats() const { return m_stats; }
+
     private:
         void SetStatus(Status status);
 
@@ -87,5 +89,7 @@ namespace Net
 
         StatusCallback m_statusCallback;
         DataReceiveCallback m_dataReceiveCallback;
+
+        Statistics m_stats;
     };
 }

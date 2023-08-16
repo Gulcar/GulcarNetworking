@@ -78,6 +78,8 @@ namespace Net
         /** gets the unordered_map end iterator for current connections. */
         inline ConnectionsMap::iterator GetClientIterEnd() { return m_connections.end(); }
 
+        inline const Statistics& GetStats() const { return m_stats; }
+
     private:
         ConnectionsMap::iterator InsertClient(IPAddr addr);
         void DisconnectClient(ConnectionsMap::iterator it);
@@ -91,5 +93,7 @@ namespace Net
         ClientConnectedCallback m_clientConnectedCallback;
         ClientDisconnectedCallback m_clientDisconnectedCallback;
         DataReceiveCallback m_dataReceiveCallback;
+
+        Statistics m_stats;
     };
 }

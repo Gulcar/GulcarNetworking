@@ -6,6 +6,7 @@
 #include <string_view>
 #include <vector>
 #include <type_traits>
+#include <chrono>
 
 /**
 * \file
@@ -51,5 +52,68 @@ namespace Net
         const void* data;
         /** size of the data in bytes */
         size_t bytes;
+    };
+
+    class Statistics
+    {
+    public:
+        size_t SentBytesPerSecond() const { return m_avgBytesSent; }
+        int SentPacketsPerSecond() const { return m_avgPacketsSent; }
+
+        size_t ReceivedBytesPerSecond() const { return m_avgBytesReceived; }
+        int ReceivedPacketsPerSecond() const { return m_avgPacketsReceived; }
+
+    private:
+        friend class Server;
+        friend class Client;
+
+        using Clock = std::chrono::steady_clock;
+        Clock::time_point m_time = Clock::now();
+
+        size_t m_bytesSent = 0;
+        int m_packetsSent = 0;
+        float m_avgBytesSent = 0.0f;
+        float m_avgPacketsSent = 0.0f;
+
+        size_t m_bytesReceived = 0;
+        int m_packetsReceived = 0;
+        float m_avgBytesReceived = 0.0f;
+        float m_avgPacketsReceived = 0.0f;
+
+        // 20 ipv4 + 8 udp + (...)
+        static constexpr size_t packetHeaderSize = 28;
+
+        void AddPacketSent(size_t bytes)
+        {
+            m_bytesSent += bytes + packetHeaderSize;
+            m_packetsSent++;
+        }
+
+        void AddPacketReceived(size_t bytes)
+        {
+            m_bytesReceived += bytes + packetHeaderSize;
+            m_packetsReceived++;
+        }
+
+        void UpdateTime()
+        {
+            if (Clock::now() - m_time > std::chrono::seconds(1))
+            {
+                constexpr float t = 0.3f;
+
+                m_avgBytesSent = ((1.0f - t) * m_avgBytesSent) + (t * m_bytesSent);
+                m_avgPacketsSent = ((1.0f - t) * m_avgPacketsSent) + (t * m_packetsSent);
+
+                m_avgBytesReceived = ((1.0f - t) * m_avgBytesReceived) + (t * m_bytesReceived);
+                m_avgPacketsReceived = ((1.0f - t) * m_avgPacketsReceived) + (t * m_packetsReceived);
+
+                m_time += std::chrono::seconds(1);
+
+                m_bytesSent = 0;
+                m_packetsSent = 0;
+                m_bytesReceived = 0;
+                m_packetsReceived = 0;
+            }
+        }
     };
 }

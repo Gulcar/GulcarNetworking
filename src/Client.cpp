@@ -49,6 +49,7 @@ namespace Net
     void Client::Send(Buf buf, uint16_t msgType, SendType reliable)
     {
         assert(m_socket && "GulcarNet: Client Connect not called!");
+        m_stats.AddPacketSent(buf.bytes);
         m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
 
@@ -91,6 +92,8 @@ namespace Net
 
             Transport::ReceiveData receiveData = m_transport->Receive(buf, bytes);
 
+            m_stats.AddPacketReceived(bytes);
+
             if (m_status == Status::Connecting)
                 SetStatus(Status::Connected);
 
@@ -105,6 +108,7 @@ namespace Net
         }
 
         m_transport->RetrySending();
+        m_stats.UpdateTime();
     }
 
     void Client::SetConnectionStatusCallback(StatusCallback callback)
