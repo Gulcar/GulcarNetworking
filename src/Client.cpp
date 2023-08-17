@@ -58,6 +58,8 @@ namespace Net
         if (!m_socket || m_status == Status::FailedToConnect || m_status == Status::Disconnected)
             return;
 
+        assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
+
         m_stats.AddPacketSent(buf.bytes);
         m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
@@ -87,6 +89,8 @@ namespace Net
 
                 break;
             }
+            else if (bytes == SockErr_MsgTooLarge)
+                continue;
 
             if (bytes <= 0)
                 continue;

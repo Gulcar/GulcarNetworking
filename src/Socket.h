@@ -42,5 +42,6 @@ namespace Net
         SockErr_WouldBlock = -10000,
         SockErr_ConnRefused,
         SockErr_PermissionDenied,
+        SockErr_MsgTooLarge,
     };
 }

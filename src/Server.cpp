@@ -46,6 +46,8 @@ namespace Net
     void Server::SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn)
     {
         assert(m_socket && "GulcarNet: Server Start not called!");
+        assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
+
         m_stats.AddPacketSent(buf.bytes);
         conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
@@ -74,6 +76,8 @@ namespace Net
 
             if (bytes == SockErr_WouldBlock)
                 break;
+            else if (bytes == SockErr_MsgTooLarge)
+                continue;
 
             auto connIt = m_connections.find(addr);
 

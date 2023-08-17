@@ -29,7 +29,6 @@ void ClientMain()
     });
 
     client.Connect(Net::IPAddr("127.0.0.1", 6543));
-    client.Send(Net::Buf("pozdrav"), 7, Net::Unreliable);
 
     std::mutex inputMutex;
 

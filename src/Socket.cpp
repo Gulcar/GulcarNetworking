@@ -123,6 +123,7 @@ namespace Net
             int error = WSAGetLastError();
             if (error == WSAECONNRESET) return SockErr_ConnRefused;
             if (error == WSAEWOULDBLOCK) return SockErr_WouldBlock;
+            if (error == WSAEMSGSIZE) return SockErr_MsgTooLarge;
 
             PrintErrorWS(error);
             throw std::runtime_error("ERROR: recvfrom failed!");
@@ -134,6 +135,9 @@ namespace Net
             throw std::runtime_error("ERROR: recvfrom failed!");
 #endif
         }
+
+        if (bytesReceived == outBufferSize)
+            return SockErr_MsgTooLarge;
 
         return bytesReceived;
     }
