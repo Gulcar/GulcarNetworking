@@ -78,6 +78,7 @@ namespace Net
         /** gets the unordered_map end iterator for current connections. */
         inline ConnectionsMap::iterator GetClientIterEnd() { return m_connections.end(); }
 
+        /** Returns the networking statistics (bytes sent, bytes received, ...) */
         inline const Statistics& GetStats() const { return m_stats; }
 
     private:
@@ -87,8 +88,6 @@ namespace Net
     private:
         std::unique_ptr<class Socket> m_socket;
         ConnectionsMap m_connections;
-
-        bool m_socketOpen = false;
 
         ClientConnectedCallback m_clientConnectedCallback;
         ClientDisconnectedCallback m_clientDisconnectedCallback;

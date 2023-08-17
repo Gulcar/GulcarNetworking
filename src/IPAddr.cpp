@@ -38,4 +38,9 @@ namespace Net
         ss << *this;
         return ss.str();
     }
+
+    bool IPAddr::IsValid() const
+    {
+        return address != INADDR_ANY && address != INADDR_BROADCAST;
+    }
 }

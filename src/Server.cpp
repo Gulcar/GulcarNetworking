@@ -33,20 +33,19 @@ namespace Net
         m_socket = std::make_unique<Socket>();
         m_socket->SetBlocking(false);
         m_socket->Bind(port);
-        m_socketOpen = true;
     }
 
     void Server::Stop()
     {
-        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+        assert(m_socket && "GulcarNet: Server Start not called!");
 
         m_socket->Close();
-        m_socketOpen = false;
+        m_socket = nullptr;
     }
 
     void Server::SendTo(Buf buf, uint16_t msgType, SendType reliable, Connection& conn)
     {
-        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+        assert(m_socket && "GulcarNet: Server Start not called!");
         m_stats.AddPacketSent(buf.bytes);
         conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
@@ -61,7 +60,7 @@ namespace Net
 
     void Server::Process()
     {
-        assert(m_socketOpen && "GulcarNet: Server Start not called!");
+        assert(m_socket && "GulcarNet: Server Start not called!");
 
         for (auto it = m_connections.begin(); it != m_connections.end(); it++)
             it->second.m_transport->SendExtraAcks();

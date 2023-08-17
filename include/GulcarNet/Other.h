@@ -54,18 +54,25 @@ namespace Net
         size_t bytes;
     };
 
+    /** Handles the networking statistics. Use Client::GetStats() and Server::GetStats() to retrieve */
     class Statistics
     {
     public:
+        /** returns sent B/s (divide by 1000.0f to get kB/s) */
         size_t SentBytesPerSecond() const { return m_avgBytesSent; }
+        /** returns sent packets/s */
         int SentPacketsPerSecond() const { return m_avgPacketsSent; }
 
+        /** returns received B/s (divide by 1000.0f to get kB/s) */
         size_t ReceivedBytesPerSecond() const { return m_avgBytesReceived; }
+        /** returns received packets/s */
         int ReceivedPacketsPerSecond() const { return m_avgPacketsReceived; }
 
     private:
         friend class Server;
         friend class Client;
+
+        Statistics() {}
 
         using Clock = std::chrono::steady_clock;
         Clock::time_point m_time = Clock::now();

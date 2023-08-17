@@ -34,6 +34,9 @@ namespace Net
         friend std::ostream& operator<<(std::ostream& os, IPAddr addr);
         std::string ToString() const;
 
+        /** returns true if this is not 0.0.0.0 or 255.255.255.255 */
+        bool IsValid() const;
+
         /** ip address in network byte order */
         uint32_t address;
         /** port in host byte order */

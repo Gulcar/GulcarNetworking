@@ -21,6 +21,13 @@ namespace Net
 
     void Client::Connect(const IPAddr& serverAddr)
     {
+        if (serverAddr.IsValid() == false)
+        {
+            SetStatus(Status::Connecting);
+            SetStatus(Status::FailedToConnect);
+            return;
+        }
+
         if (m_socket)
             m_socket->Close();
 
@@ -48,7 +55,9 @@ namespace Net
 
     void Client::Send(Buf buf, uint16_t msgType, SendType reliable)
     {
-        assert(m_socket && "GulcarNet: Client Connect not called!");
+        if (!m_socket || m_status == Status::FailedToConnect || m_status == Status::Disconnected)
+            return;
+
         m_stats.AddPacketSent(buf.bytes);
         m_transport->Send(buf.data, buf.bytes, msgType, reliable);
     }
