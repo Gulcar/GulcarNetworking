@@ -65,17 +65,7 @@ namespace Net
             return;
         m_needToSendAck = false;
 
-        DEBUG("sending extra ack\n");
-
-        PacketReliable packet;
-        packet.sendType = SendType::Reliable;
-        packet.msgType = MsgType_AcksOnly;
-        packet.seqNum = ++m_sequences.localSeqNum;
-        packet.ackNum = m_sequences.remoteSeqNum;
-        packet.ackBits = GetAckBits();
-
-        int res = m_socket->SendTo(&packet, sizeof(PacketReliable), m_addr);
-        assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
+        SendExtraAcksFrom(m_sequences.remoteSeqNum);
     }
 
     void Transport::RetrySending()
@@ -257,7 +247,16 @@ namespace Net
         if (m_receivedBits[packet->seqNum % 1024] == true)
         {
             DEBUG("already received packet " << packet->seqNum << "\n");
-            m_needToSendAck = true;
+
+            if (m_sequences.remoteSeqNum - packet->seqNum > 30)
+            {
+                SendExtraAcksFrom(packet->seqNum);
+            }
+            else
+            {
+                m_needToSendAck = true;
+            }
+            
             ReceiveData data;
             data.callback = false;
             return data;
@@ -298,13 +297,33 @@ namespace Net
         return data;
     }
 
+    void Transport::SendExtraAcksFrom(uint32_t remoteSeq)
+    {
+        DEBUG("sending extra ack\n");
+
+        PacketReliable packet;
+        packet.sendType = SendType::Reliable;
+        packet.msgType = MsgType_AcksOnly;
+        packet.seqNum = ++m_sequences.localSeqNum;
+        packet.ackNum = remoteSeq;
+        packet.ackBits = GetAckBitsFrom(remoteSeq);
+
+        int res = m_socket->SendTo(&packet, sizeof(PacketReliable), m_addr);
+        assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
+    }
+
     uint32_t Transport::GetAckBits()
+    {
+        return GetAckBitsFrom(m_sequences.remoteSeqNum);
+    }
+
+    uint32_t Transport::GetAckBitsFrom(uint32_t remoteSeq)
     {
         uint32_t bits = 0;
 
         for (int i = 0; i < 32; i++)
         {
-            int seq = m_sequences.remoteSeqNum - 1 - i;
+            int seq = remoteSeq - 1 - i;
             if (seq < 0) break;
 
             if (m_receivedBits[seq % 1024] == true)
