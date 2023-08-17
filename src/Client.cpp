@@ -117,6 +117,10 @@ namespace Net
         }
 
         m_transport->RetrySending();
+
+        if (m_transport->IsGettingAcks() == false)
+            SetStatus(Status::Disconnected);
+
         m_stats.UpdateTime();
     }
 

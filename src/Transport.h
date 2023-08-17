@@ -50,6 +50,7 @@ namespace Net
             Clock::time_point timeSent;
             PacketReliable* packet;
             size_t packetSize; // total size (header + body)
+            int resendCount = 0;
             bool acked = false;
         };
 
@@ -70,6 +71,7 @@ namespace Net
 
         void SendExtraAcks();
         void RetrySending();
+        bool IsGettingAcks();
 
         void SendConnectRequest();
 
@@ -97,6 +99,7 @@ namespace Net
         Sequences m_sequences;
 
         bool m_needToSendAck = false;
+        bool m_gettingAcks = true;
 
         std::bitset<1024> m_receivedBits;
         std::deque<WaitingForAck> m_waitingForAck;

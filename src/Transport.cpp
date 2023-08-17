@@ -16,6 +16,8 @@
 namespace Net
 {
     using ReceiveData = Transport::ReceiveData;
+    constexpr auto timeToResend = std::chrono::milliseconds(100);
+    constexpr int maxResendCount = std::chrono::seconds(5) / timeToResend;
 
     void Transport::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
     {
@@ -94,6 +96,13 @@ namespace Net
             if (duration < std::chrono::milliseconds(100))
                 break;
 
+            // ce ne predolgo nismo dobili acka
+            if (waiting.resendCount >= maxResendCount)
+            {
+                m_gettingAcks = false;
+                return;
+            }
+
             DEBUG("resending: " << waiting.packet->seqNum << "\n");
 
             waiting.packet->ackNum = m_sequences.remoteSeqNum;
@@ -105,11 +114,17 @@ namespace Net
             m_waitingForAck.push_back({
                 Clock::now(),
                 waiting.packet,
-                waiting.packetSize
+                waiting.packetSize,
+                waiting.resendCount + 1
             });
 
             m_waitingForAck.pop_front();
         }
+    }
+
+    bool Transport::IsGettingAcks()
+    {
+        return m_gettingAcks;
     }
 
     void Transport::SendConnectRequest()

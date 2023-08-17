@@ -108,6 +108,15 @@ namespace Net
         for (auto it = m_connections.begin(); it != m_connections.end(); it++)
             it->second.m_transport->RetrySending();
 
+        for (auto it = m_connections.begin(); it != m_connections.end(); it++)
+        {
+            if (it->second.m_transport->IsGettingAcks() == false)
+            {
+                DisconnectClient(it);
+                break;
+            }
+        }
+
         m_stats.UpdateTime();
     }
 
