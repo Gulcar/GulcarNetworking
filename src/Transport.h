@@ -15,8 +15,10 @@ namespace Net
     {
         using Clock = std::chrono::steady_clock;
 
+#pragma pack(push, 1)
         struct PacketUnreliable
         {
+            uint16_t protocolId;
             SendType sendType;
             uint16_t msgType;
 
@@ -25,6 +27,7 @@ namespace Net
 
         struct PacketUnreliableDiscardOld
         {
+            uint16_t protocolId;
             SendType sendType;
             uint16_t msgType;
 
@@ -35,6 +38,7 @@ namespace Net
 
         struct PacketReliable
         {
+            uint16_t protocolId;
             SendType sendType;
             uint16_t msgType;
 
@@ -44,6 +48,7 @@ namespace Net
 
             // data ...
         };
+#pragma pack(pop)
 
         struct WaitingForAck
         {

@@ -9,8 +9,8 @@
     #define DEBUG(x)
 #endif
 
-#ifndef GULCAR_NET_RECV_BUF_SIZE
-#define GULCAR_NET_RECV_BUF_SIZE 512
+#ifndef GULCAR_NET_PROTOCOL_ID
+#define GULCAR_NET_PROTOCOL_ID 0x0504
 #endif
 
 namespace Net
@@ -42,18 +42,26 @@ namespace Net
 
     ReceiveData Transport::Receive(void* buf, size_t bytes)
     {
-        SendType sendType = *(SendType*)buf;
+        PacketUnreliable packet = *(PacketUnreliable*)buf;
 
-        if (sendType == SendType::Unreliable && bytes >= sizeof(PacketUnreliable))
+        if (packet.protocolId != GULCAR_NET_PROTOCOL_ID)
+        {
+            DEBUG("invalid packet protocol id\n");
+            ReceiveData data;
+            data.callback = false;
+            return data;
+        }
+
+        if (packet.sendType == SendType::Unreliable && bytes >= sizeof(PacketUnreliable))
             return ReceiveUnreliable(buf, bytes);
 
-        else if (sendType == SendType::UnreliableDiscardOld && bytes >= sizeof(PacketUnreliableDiscardOld))
+        else if (packet.sendType == SendType::UnreliableDiscardOld && bytes >= sizeof(PacketUnreliableDiscardOld))
             return ReceiveUnreliableDiscardOld(buf, bytes);
 
-        else if (sendType == SendType::Reliable && bytes >= sizeof(PacketReliable))
+        else if (packet.sendType == SendType::Reliable && bytes >= sizeof(PacketReliable))
             return ReceiveReliable(buf, bytes);
 
-        DEBUG("invalid packet\n");
+        DEBUG("invalid packet send type\n");
         ReceiveData data;
         data.callback = false;
         return data;
@@ -128,6 +136,7 @@ namespace Net
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         Packet* packet = (Packet*)buf;
+        packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::Unreliable;
         packet->msgType = msgType;
 
@@ -143,6 +152,7 @@ namespace Net
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
         Packet* packet = (Packet*)buf;
+        packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::UnreliableDiscardOld;
         packet->msgType = msgType;
         packet->seqNum = ++(m_seqMap[msgType].localSeqNum);
@@ -158,6 +168,7 @@ namespace Net
         using Packet = PacketReliable;
 
         Packet* packet = (Packet*)(new char[sizeof(Packet) + bytes]);
+        packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::Reliable;
         packet->msgType = msgType;
         packet->seqNum = ++m_sequences.localSeqNum;
@@ -302,6 +313,7 @@ namespace Net
         DEBUG("sending extra ack\n");
 
         PacketReliable packet;
+        packet.protocolId = GULCAR_NET_PROTOCOL_ID;
         packet.sendType = SendType::Reliable;
         packet.msgType = MsgType_AcksOnly;
         packet.seqNum = ++m_sequences.localSeqNum;

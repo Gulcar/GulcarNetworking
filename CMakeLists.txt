@@ -23,6 +23,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 #add_compile_definitions(GULCAR_NET_SIM_PACKET_LOSS)
 #add_compile_definitions(GULCAR_NET_DEBUG_OUT)
 #add_compile_definitions(GULCAR_NET_RECV_BUF_SIZE=1024)
+#add_compile_definitions(GULCAR_NET_PROTOCOL_ID=0x0503)
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 17)
 

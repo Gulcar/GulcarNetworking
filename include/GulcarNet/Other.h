@@ -8,6 +8,10 @@
 #include <type_traits>
 #include <chrono>
 
+#ifndef GULCAR_NET_RECV_BUF_SIZE
+#define GULCAR_NET_RECV_BUF_SIZE 512
+#endif
+
 /**
 * \file
 */
@@ -17,11 +21,11 @@ namespace Net
     /** describes the send reliability */
     enum SendType : uint8_t
     {
-        /** just packets (packet loss, out of order) */
+        /** just packets (packet loss, unordered) */
         Unreliable,
-        /** will discard the packet if a newer packet with same msgType already arrived (still packet loss) */
+        /** will discard the packet if a newer packet with same msgType already arrived (still packet loss, unordered) */
         UnreliableDiscardOld,
-        /** will resend if no ack (ordered) */
+        /** will resend if no ack (unordered) */
         Reliable,
     };
 

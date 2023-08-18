@@ -3,10 +3,6 @@
 #include "Transport.h"
 #include <cassert>
 
-#ifndef GULCAR_NET_RECV_BUF_SIZE
-#define GULCAR_NET_RECV_BUF_SIZE 512
-#endif
-
 namespace Net
 {
     Client::Client()
