@@ -45,7 +45,7 @@ namespace Net
         assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
 
         m_stats.AddPacketSent(buf.bytes);
-        conn.m_transport->Send(buf.data, buf.bytes, msgType, reliable);
+        conn.m_transport->QueueSend(buf.data, buf.bytes, msgType, reliable);
     }
 
     void Server::SendToAll(Buf buf, uint16_t msgType, SendType reliable)
@@ -61,7 +61,10 @@ namespace Net
         assert(m_socket && "GulcarNet: Server Start not called!");
 
         for (auto it = m_connections.begin(); it != m_connections.end(); it++)
+        {
+            it->second.m_transport->FlushSendQueue();
             it->second.m_transport->SendExtraAcks();
+        }
 
         char buf[GULCAR_NET_RECV_BUF_SIZE];
 
@@ -94,15 +97,15 @@ namespace Net
             if (rand() % 100 < 3)
                 continue;
 #endif
-            buf[bytes] = '\0';
 
             Connection& conn = connIt->second;
-            Transport::ReceiveData receiveData = conn.m_transport->Receive(buf, bytes);
+            
+            conn.m_transport->Receive(buf, bytes, [this, &conn](void* data, size_t bytes, uint16_t msgType) {
+                if (m_dataReceiveCallback)
+                    m_dataReceiveCallback(data, bytes, msgType, conn);
+            });
 
             m_stats.AddPacketReceived(bytes);
-
-            if (receiveData.callback && m_dataReceiveCallback)
-                m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType, conn);
         }
 
         for (auto it = m_connections.begin(); it != m_connections.end(); it++)

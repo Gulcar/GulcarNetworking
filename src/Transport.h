@@ -20,33 +20,30 @@ namespace Net
         {
             uint16_t protocolId;
             SendType sendType;
-            uint16_t msgType;
 
-            // data ...
+            // (u16 msgType, u16 size, data) ...
         };
 
         struct PacketUnreliableDiscardOld
         {
             uint16_t protocolId;
             SendType sendType;
-            uint16_t msgType;
 
             uint16_t seqNum;
 
-            // data ...
+            // (u16 msgType, u16 size, data) ...
         };
 
         struct PacketReliable
         {
             uint16_t protocolId;
             SendType sendType;
-            uint16_t msgType;
 
             uint16_t seqNum;
             uint16_t ackNum;
             uint32_t ackBits;
 
-            // data ...
+            // (u16 msgType, u16 size, data) ...
         };
 #pragma pack(pop)
 
@@ -65,15 +62,25 @@ namespace Net
             MsgType_ConnectRequest, // no data (used by SendConnectRequest)
         };
 
+        // za poslijanje vec paketov na enkrat
+        struct SendBuf
+        {
+            char data[GULCAR_NET_RECV_BUF_SIZE];
+            int bytes;
+
+            SendBuf(int bytes) : bytes(bytes) {}
+        };
+
     public:
         Transport(class Socket* socket, IPAddr addr)
             : m_socket(socket), m_addr(addr) { }
 
-        void Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
+        void QueueSend(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
 
-        struct ReceiveData { void* data; size_t bytes; uint16_t msgType; bool callback; };
-        ReceiveData Receive(void* buf, size_t bytes);
+        using ReceiveDataCallback = std::function<void(void* data, size_t bytes, uint16_t msgType)>;
+        void Receive(void* buf, size_t bytes, ReceiveDataCallback callback);
 
+        void FlushSendQueue();
         void SendExtraAcks();
         void RetrySending();
         bool IsGettingAcks();
@@ -81,13 +88,13 @@ namespace Net
         void SendConnectRequest();
 
     private:
-        void SendUnreliable(const void* data, size_t bytes, uint16_t msgType);
-        void SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType);
-        void SendReliable(const void* data, size_t bytes, uint16_t msgType);
+        void SendUnreliable();
+        void SendUnreliableDiscardOld();
+        void SendReliable();
 
-        ReceiveData ReceiveUnreliable(void* buf, size_t bytes);
-        ReceiveData ReceiveUnreliableDiscardOld(void* buf, size_t bytes);
-        ReceiveData ReceiveReliable(void* buf, size_t bytes);
+        void ReceiveUnreliable(void* buf, size_t bytes, ReceiveDataCallback callback);
+        void ReceiveUnreliableDiscardOld(void* buf, size_t bytes, ReceiveDataCallback callback);
+        void ReceiveReliable(void* buf, size_t bytes, ReceiveDataCallback callback);
 
         void SendExtraAcksFrom(uint32_t remoteSeq);
 
@@ -101,7 +108,8 @@ namespace Net
             uint16_t remoteSeqNum = 0; // last seqNum received
         };
         // msgType -> seq (for UnreliableDiscardOld)
-        std::unordered_map<uint16_t, Sequences> m_seqMap;
+        std::unordered_map<uint16_t, uint16_t> m_seqMap;
+        uint16_t m_localSeqUnreliableDiscardOld = 0;
 
         // for all Reliable
         Sequences m_sequences;
@@ -111,6 +119,10 @@ namespace Net
 
         std::bitset<1024> m_receivedBits;
         std::deque<WaitingForAck> m_waitingForAck;
+
+        SendBuf m_unreliableSendBuf = SendBuf(sizeof(PacketUnreliable));
+        SendBuf m_unreliableDiscardOldSendBuf = SendBuf(sizeof(PacketUnreliableDiscardOld));
+        SendBuf m_reliableSendBuf = SendBuf(sizeof(PacketReliable));
 
         class Socket* m_socket;
         IPAddr m_addr;

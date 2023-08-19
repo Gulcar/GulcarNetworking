@@ -1,6 +1,7 @@
 #include "Transport.h"
 #include "Socket.h"
 #include <cassert>
+#include <unordered_set>
 
 #ifdef GULCAR_NET_DEBUG_OUT
     #include <iostream>
@@ -15,56 +16,81 @@
 
 namespace Net
 {
-    using ReceiveData = Transport::ReceiveData;
     constexpr auto timeToResend = std::chrono::milliseconds(100);
     constexpr int maxResendCount = std::chrono::seconds(5) / timeToResend;
 
-    void Transport::Send(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
+    void Transport::QueueSend(const void* data, size_t bytes, uint16_t msgType, SendType reliable)
     {
+        SendBuf* buf;
+
         switch (reliable)
         {
         case SendType::Unreliable:
-            SendUnreliable(data, bytes, msgType);
-            return;
-
+        {
+            buf = &m_unreliableSendBuf;
+            if (buf->bytes + bytes + 4 >= GULCAR_NET_RECV_BUF_SIZE)
+                SendUnreliable();
+            break;
+        }
         case SendType::UnreliableDiscardOld:
-            SendUnreliableDiscardOld(data, bytes, msgType);
-            return;
-
+        {
+            buf = &m_unreliableDiscardOldSendBuf;
+            if (buf->bytes + bytes + 4 >= GULCAR_NET_RECV_BUF_SIZE)
+                SendUnreliableDiscardOld();
+            break;
+        }
         case SendType::Reliable:
-            SendReliable(data, bytes, msgType);
-            return;
+        {
+            buf = &m_reliableSendBuf;
+            if (buf->bytes + bytes + 4 >= GULCAR_NET_RECV_BUF_SIZE)
+                SendReliable();
+            break;
+        }
+        default: assert(false && "invalid send type\n");
         }
 
-        assert(false && "GulcarNet: SendType doesnt match!");
-        return;
+        uint16_t size = bytes;
+
+        memcpy(buf->data + buf->bytes, &msgType, 2);
+        memcpy(buf->data + buf->bytes + 2, &size, 2);
+        memcpy(buf->data + buf->bytes + 4, data, bytes);
+
+        buf->bytes += 4 + bytes;
+
+        DEBUG("send queued\n");
     }
 
-    ReceiveData Transport::Receive(void* buf, size_t bytes)
+    void Transport::Receive(void* buf, size_t bytes, ReceiveDataCallback callback)
     {
         PacketUnreliable packet = *(PacketUnreliable*)buf;
 
         if (packet.protocolId != GULCAR_NET_PROTOCOL_ID)
         {
-            DEBUG("invalid packet protocol id\n");
-            ReceiveData data;
-            data.callback = false;
-            return data;
+            DEBUG("invalid packet protocol id: " << std::hex << packet.protocolId << "\n");
+            return;
         }
 
         if (packet.sendType == SendType::Unreliable && bytes >= sizeof(PacketUnreliable))
-            return ReceiveUnreliable(buf, bytes);
+            return ReceiveUnreliable(buf, bytes, callback);
 
         else if (packet.sendType == SendType::UnreliableDiscardOld && bytes >= sizeof(PacketUnreliableDiscardOld))
-            return ReceiveUnreliableDiscardOld(buf, bytes);
+            return ReceiveUnreliableDiscardOld(buf, bytes, callback);
 
         else if (packet.sendType == SendType::Reliable && bytes >= sizeof(PacketReliable))
-            return ReceiveReliable(buf, bytes);
+            return ReceiveReliable(buf, bytes, callback);
 
         DEBUG("invalid packet send type\n");
-        ReceiveData data;
-        data.callback = false;
-        return data;
+        return;
+    }
+
+    void Transport::FlushSendQueue()
+    {
+        if (m_unreliableSendBuf.bytes > sizeof(PacketUnreliable))
+            SendUnreliable();
+        if (m_unreliableDiscardOldSendBuf.bytes > sizeof(PacketUnreliableDiscardOld))
+            SendUnreliableDiscardOld();
+        if (m_reliableSendBuf.bytes > sizeof(PacketReliable))
+            SendReliable();
     }
 
     void Transport::SendExtraAcks()
@@ -91,6 +117,7 @@ namespace Net
             }
 
             auto duration = Clock::now() - waiting.timeSent;
+            // TODO: cas med resendanjem bi moral postajati vedno vecji da ne preobremenis networka
             if (duration < std::chrono::milliseconds(100))
                 break;
 
@@ -127,118 +154,146 @@ namespace Net
 
     void Transport::SendConnectRequest()
     {
-        SendReliable(nullptr, 0, MsgType_ConnectRequest);
+        QueueSend(nullptr, 0, MsgType_ConnectRequest, SendType::Reliable);
     }
 
-    void Transport::SendUnreliable(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendUnreliable()
     {
         using Packet = PacketUnreliable;
-        char buf[GULCAR_NET_RECV_BUF_SIZE];
 
-        Packet* packet = (Packet*)buf;
+        Packet* packet = (Packet*)m_unreliableSendBuf.data;
         packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::Unreliable;
-        packet->msgType = msgType;
 
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
+        int res = m_socket->SendTo(packet, m_unreliableSendBuf.bytes, m_addr);
+        assert(res == m_unreliableSendBuf.bytes && "GulcarNet: failed to send!");
 
-        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
-        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
+        DEBUG("send unreliable " << m_unreliableSendBuf.bytes << " bytes\n");
+
+        m_unreliableSendBuf.bytes = sizeof(Packet);
     }
 
-    void Transport::SendUnreliableDiscardOld(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendUnreliableDiscardOld()
     {
         using Packet = PacketUnreliableDiscardOld;
-        char buf[GULCAR_NET_RECV_BUF_SIZE];
 
-        Packet* packet = (Packet*)buf;
+        Packet* packet = (Packet*)m_unreliableDiscardOldSendBuf.data;
         packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::UnreliableDiscardOld;
-        packet->msgType = msgType;
-        packet->seqNum = ++(m_seqMap[msgType].localSeqNum);
+        packet->seqNum = ++m_localSeqUnreliableDiscardOld;
 
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
+        int res = m_socket->SendTo(packet, m_unreliableDiscardOldSendBuf.bytes, m_addr);
+        assert(res == m_unreliableDiscardOldSendBuf.bytes && "GulcarNet: failed to send!");
 
-        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
-        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
+        DEBUG("send unreliable discard old " << m_unreliableDiscardOldSendBuf.bytes << " bytes\n");
+
+        m_unreliableDiscardOldSendBuf.bytes = sizeof(Packet);
     }
 
-    void Transport::SendReliable(const void* data, size_t bytes, uint16_t msgType)
+    void Transport::SendReliable()
     {
         using Packet = PacketReliable;
 
-        Packet* packet = (Packet*)(new char[sizeof(Packet) + bytes]);
+        Packet* packet = (Packet*)(new char[m_reliableSendBuf.bytes]);
         packet->protocolId = GULCAR_NET_PROTOCOL_ID;
         packet->sendType = SendType::Reliable;
-        packet->msgType = msgType;
         packet->seqNum = ++m_sequences.localSeqNum;
         packet->ackNum = m_sequences.remoteSeqNum;
         packet->ackBits = GetAckBits();
 
         m_needToSendAck = false;
 
-        memcpy((char*)packet + sizeof(Packet), data, bytes);
+        memcpy((char*)packet + sizeof(Packet), m_reliableSendBuf.data + sizeof(Packet), m_reliableSendBuf.bytes - sizeof(Packet));
 
         m_waitingForAck.push_back({
             Clock::now(),
             packet,
-            sizeof(Packet) + bytes
+            (size_t)m_reliableSendBuf.bytes
         });
 
-        int res = m_socket->SendTo(packet, sizeof(Packet) + bytes, m_addr);
-        assert(res == (sizeof(Packet) + bytes) && "GulcarNet: failed to send!");
+        int res = m_socket->SendTo(packet, m_reliableSendBuf.bytes, m_addr);
+        assert(res == m_reliableSendBuf.bytes && "GulcarNet: failed to send!");
+
+        DEBUG("send reliable " << m_reliableSendBuf.bytes << " bytes\n");
+
+        m_reliableSendBuf.bytes = sizeof(Packet);
     }
 
     
-    ReceiveData Transport::ReceiveUnreliable(void* buf, size_t bytes)
+    void Transport::ReceiveUnreliable(void* buf, size_t bytes, Transport::ReceiveDataCallback callback)
     {
         PacketUnreliable* packet = (PacketUnreliable*)buf;
         DEBUG("received unreliable packet\n");
-        DEBUG("msgType: " << packet->msgType << "\n");
 
-        ReceiveData data;
-        data.data = (char*)buf + sizeof(PacketUnreliable);
-        data.bytes = bytes - sizeof(PacketUnreliable);
-        data.msgType = packet->msgType;
-        data.callback = true;
-        return data;
+        int i = sizeof(PacketUnreliable);
+        while (i < bytes)
+        {
+            uint16_t msgType = *(uint16_t*)((char*)buf + i);
+            uint16_t size = *(uint16_t*)((char*)buf + i + 2);
+
+            if (i + 4 + size > bytes)
+            {
+                DEBUG("invalid packet size\n");
+                return;
+            }
+
+            callback((char*)buf + i + 4, size, msgType);
+
+            i += 4 + size;
+        }
     }
 
-    ReceiveData Transport::ReceiveUnreliableDiscardOld(void* buf, size_t bytes)
+    void Transport::ReceiveUnreliableDiscardOld(void* buf, size_t bytes, Transport::ReceiveDataCallback callback)
     {
         PacketUnreliableDiscardOld* packet = (PacketUnreliableDiscardOld*)buf;
         DEBUG("received unreliable discard old packet\n");
-        DEBUG("msgType: " << packet->msgType << "\n");
         DEBUG("seqNum: " << packet->seqNum << "\n");
 
-        uint16_t& remoteSeq = m_seqMap[packet->msgType].remoteSeqNum;
+        static std::unordered_set<uint16_t> seqUpdatesThisPacket;
+        seqUpdatesThisPacket.clear();
 
-        ReceiveData data;
-
-        int diff = (int)packet->seqNum - (int)remoteSeq;
-        if ((diff > 0 && diff < 16.384) || (diff < -49.152))
+        int i = sizeof(PacketUnreliableDiscardOld);
+        while (i < bytes)
         {
-            remoteSeq = packet->seqNum;
+            uint16_t msgType = *(uint16_t*)((char*)buf + i);
+            uint16_t size = *(uint16_t*)((char*)buf + i + 2);
 
-            data.data = (char*)buf + sizeof(PacketUnreliableDiscardOld);
-            data.bytes = bytes - sizeof(PacketUnreliableDiscardOld);
-            data.msgType = packet->msgType;
-            data.callback = true;
-        }
-        else
-        {
-            DEBUG("packet discarded\n");
-            data.callback = false;
-        }
+            if (i + 4 + size > bytes)
+            {
+                DEBUG("invalid packet size\n");
+                return;
+            }
 
-        return data;
+            bool alreadyUpdatedSeq = seqUpdatesThisPacket.find(msgType) != seqUpdatesThisPacket.end();
+            if (alreadyUpdatedSeq)
+            {
+                callback((char*)buf + i + 4, size, msgType);
+            }
+            else
+            {
+                uint16_t& remoteSeq = m_seqMap[msgType];
+
+                int diff = (int)packet->seqNum - (int)remoteSeq;
+                if ((diff > 0 && diff < 16.384) || (diff < -49.152))
+                {
+                    remoteSeq = packet->seqNum;
+                    seqUpdatesThisPacket.insert(msgType);
+                    callback((char*)buf + i + 4, size, msgType);
+                }
+                else
+                {
+                    DEBUG("packet discarded\n");
+                }
+            }
+
+            i += 4 + size;
+        }
     }
 
-    ReceiveData Transport::ReceiveReliable(void* buf, size_t bytes)
+    void Transport::ReceiveReliable(void* buf, size_t bytes, Transport::ReceiveDataCallback callback)
     {
         PacketReliable* packet = (PacketReliable*)buf;
         DEBUG("received reliable packet\n");
-        DEBUG("msgType: " << packet->msgType << "\n");
         DEBUG("seqNum: " << packet->seqNum << "\n");
         DEBUG("ackNum: " << packet->ackNum << "\n");
         DEBUG("ackBits: " << std::bitset<32>(packet->ackBits) << "\n");
@@ -246,6 +301,7 @@ namespace Net
         int diff = (int)packet->seqNum - (int)m_sequences.remoteSeqNum;
         if ((diff > 0 && diff < 16.384) || (diff < -49.152))
         {
+            // TODO: tole ni kul (kaj se zgodi ko wrappa in kaj ko posiljamo acke za nazaj ce jih tu resetiramo)
             // izbrisi m_receivedBits ki jih ne bomo vec posiljali kot ack
             int from = std::max(m_sequences.remoteSeqNum - 32, 0);
             int to = packet->seqNum - 32;
@@ -268,15 +324,10 @@ namespace Net
                 m_needToSendAck = true;
             }
             
-            ReceiveData data;
-            data.callback = false;
-            return data;
+            return;
         }
 
         m_receivedBits[packet->seqNum % 1024] = true;
-
-        if (packet->msgType != MsgType_AcksOnly)
-            m_needToSendAck = true;
 
         for (auto it = m_waitingForAck.begin(); it != m_waitingForAck.end(); it++)
         {
@@ -295,32 +346,48 @@ namespace Net
             it->acked = (packet->ackBits >> (diff-1)) & 1;
         }
 
-        ReceiveData data;
-        data.data = (char*)buf + sizeof(PacketReliable);
-        data.bytes = bytes - sizeof(PacketReliable);
-        data.msgType = packet->msgType;
-        data.callback = true;
+        int i = sizeof(PacketReliable);
+        while (i < bytes)
+        {
+            uint16_t msgType = *(uint16_t*)((char*)buf + i);
+            uint16_t size = *(uint16_t*)((char*)buf + i + 2);
 
-        if (packet->msgType == MsgType_AcksOnly ||
-            packet->msgType == MsgType_ConnectRequest)
-            data.callback = false;
+            if (i + 4 + size > bytes)
+            {
+                DEBUG("invalid packet size: " << size << "\n");
+                return;
+            }
 
-        return data;
+            if (msgType != MsgType_AcksOnly)
+                m_needToSendAck = true;
+            
+            if (msgType != MsgType_AcksOnly &&
+                msgType != MsgType_ConnectRequest)
+            {
+                callback((char*)buf + i + 4, size, msgType);
+            }
+
+            i += 4 + size;
+        }
     }
 
     void Transport::SendExtraAcksFrom(uint32_t remoteSeq)
     {
         DEBUG("sending extra ack\n");
 
-        PacketReliable packet;
-        packet.protocolId = GULCAR_NET_PROTOCOL_ID;
-        packet.sendType = SendType::Reliable;
-        packet.msgType = MsgType_AcksOnly;
-        packet.seqNum = ++m_sequences.localSeqNum;
-        packet.ackNum = remoteSeq;
-        packet.ackBits = GetAckBitsFrom(remoteSeq);
+        char buf[sizeof(PacketReliable) + 4];
+        PacketReliable* packet = (PacketReliable*)buf;
+        packet->protocolId = GULCAR_NET_PROTOCOL_ID;
+        packet->sendType = SendType::Reliable;
+        packet->seqNum = ++m_sequences.localSeqNum;
+        packet->ackNum = remoteSeq;
+        packet->ackBits = GetAckBitsFrom(remoteSeq);
 
-        int res = m_socket->SendTo(&packet, sizeof(PacketReliable), m_addr);
+        uint16_t msgType = MsgType_AcksOnly;
+        memcpy(buf + sizeof(PacketReliable), &msgType, 2);
+        memset(buf + sizeof(PacketReliable) + 2, 0, 2);
+
+        int res = m_socket->SendTo(packet, sizeof(PacketReliable), m_addr);
         assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
     }
 

@@ -57,7 +57,7 @@ namespace Net
         assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
 
         m_stats.AddPacketSent(buf.bytes);
-        m_transport->Send(buf.data, buf.bytes, msgType, reliable);
+        m_transport->QueueSend(buf.data, buf.bytes, msgType, reliable);
     }
 
     void Client::Process()
@@ -65,6 +65,7 @@ namespace Net
         if (!m_socket || m_status == Status::FailedToConnect || m_status == Status::Disconnected)
             return;
 
+        m_transport->FlushSendQueue();
         m_transport->SendExtraAcks();
 
         char buf[GULCAR_NET_RECV_BUF_SIZE];
@@ -97,17 +98,16 @@ namespace Net
             if (rand() % 100 < 3)
                 continue;
 #endif
-            buf[bytes] = '\0';
-
-            Transport::ReceiveData receiveData = m_transport->Receive(buf, bytes);
-
-            m_stats.AddPacketReceived(bytes);
 
             if (m_status == Status::Connecting)
                 SetStatus(Status::Connected);
 
-            if (receiveData.callback && m_dataReceiveCallback)
-                m_dataReceiveCallback(receiveData.data, receiveData.bytes, receiveData.msgType);
+            m_transport->Receive(buf, bytes, [this](void* data, size_t bytes, uint16_t msgType) {
+                if (m_dataReceiveCallback)
+                    m_dataReceiveCallback(data, bytes, msgType);
+            });
+
+            m_stats.AddPacketReceived(bytes);
         }
 
         if (m_status == Status::Connecting &&

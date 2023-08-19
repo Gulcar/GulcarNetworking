@@ -25,7 +25,9 @@ void ClientMain()
     });
 
     client.SetDataReceiveCallback([](void* data, size_t bytes, uint16_t msgType) {
-        std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
+        std::cout << "received (" << bytes << " bytes): ";
+        std::cout.write((char*)data, bytes);
+        std::cout << "\n";
     });
 
     client.Connect(Net::IPAddr("127.0.0.1", 6543));
@@ -71,7 +73,9 @@ void ServerMain()
         std::cout << "closed connection: " << conn.GetAddr() << "\n";
     });
     server.SetDataReceiveCallback([&server](void* data, size_t bytes, uint16_t msgType, Net::Connection& conn) {
-        std::cout << "received (" << bytes << " bytes): " << (char*)data << "\n";
+        std::cout << "received (" << bytes << " bytes): ";
+        std::cout.write((char*)data, bytes);
+        std::cout << "\n";
         server.SendToAll(Net::Buf(data, bytes), msgType, Net::Reliable);
     });
 
