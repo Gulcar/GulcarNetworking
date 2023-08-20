@@ -185,7 +185,7 @@ namespace Net
         int res = m_socket->SendTo(packet, m_unreliableDiscardOldSendBuf.bytes, m_addr);
         assert(res == m_unreliableDiscardOldSendBuf.bytes && "GulcarNet: failed to send!");
 
-        DEBUG("send unreliable discard old " << m_unreliableDiscardOldSendBuf.bytes << " bytes\n");
+        DEBUG("send unreliable discard old " << m_unreliableDiscardOldSendBuf.bytes << " bytes (" << packet->seqNum << ")\n");
 
         m_unreliableDiscardOldSendBuf.bytes = sizeof(Packet);
     }
@@ -214,7 +214,7 @@ namespace Net
         int res = m_socket->SendTo(packet, m_reliableSendBuf.bytes, m_addr);
         assert(res == m_reliableSendBuf.bytes && "GulcarNet: failed to send!");
 
-        DEBUG("send reliable " << m_reliableSendBuf.bytes << " bytes\n");
+        DEBUG("send reliable " << m_reliableSendBuf.bytes << " bytes (" << packet->seqNum << ")\n");
 
         m_reliableSendBuf.bytes = sizeof(Packet);
     }
@@ -301,11 +301,10 @@ namespace Net
         int diff = (int)packet->seqNum - (int)m_sequences.remoteSeqNum;
         if ((diff > 0 && diff < 16.384) || (diff < -49.152))
         {
-            // TODO: tole ni kul (kaj se zgodi ko wrappa in kaj ko posiljamo acke za nazaj ce jih tu resetiramo)
             // izbrisi m_receivedBits ki jih ne bomo vec posiljali kot ack
-            int from = std::max(m_sequences.remoteSeqNum - 32, 0);
-            int to = packet->seqNum - 32;
-            for (int i = from; i < to; i++)
+            uint16_t from = m_sequences.remoteSeqNum - 256;
+            uint16_t to = packet->seqNum - 256;
+            for (uint16_t i = from; i <= to; i++)
                 m_receivedBits[i % 1024] = false;
 
             m_sequences.remoteSeqNum = packet->seqNum;
@@ -314,16 +313,7 @@ namespace Net
         if (m_receivedBits[packet->seqNum % 1024] == true)
         {
             DEBUG("already received packet " << packet->seqNum << "\n");
-
-            if (m_sequences.remoteSeqNum - packet->seqNum > 30)
-            {
-                SendExtraAcksFrom(packet->seqNum);
-            }
-            else
-            {
-                m_needToSendAck = true;
-            }
-            
+            SendExtraAcksFrom(packet->seqNum);
             return;
         }
 
@@ -340,10 +330,10 @@ namespace Net
                 continue;
             }
 
-            int diff = (int)packet->ackNum - (int)it->packet->seqNum;
-            if (diff < 0 || diff >= 32) continue;
+            uint16_t diff = packet->ackNum - it->packet->seqNum;
 
-            it->acked = (packet->ackBits >> (diff-1)) & 1;
+            if (diff > 0 && diff < 32)
+                it->acked = (packet->ackBits >> (diff - 1)) & 1;
         }
 
         int i = sizeof(PacketReliable);
@@ -371,7 +361,7 @@ namespace Net
         }
     }
 
-    void Transport::SendExtraAcksFrom(uint32_t remoteSeq)
+    void Transport::SendExtraAcksFrom(uint16_t remoteSeq)
     {
         DEBUG("sending extra ack\n");
 
@@ -396,14 +386,13 @@ namespace Net
         return GetAckBitsFrom(m_sequences.remoteSeqNum);
     }
 
-    uint32_t Transport::GetAckBitsFrom(uint32_t remoteSeq)
+    uint32_t Transport::GetAckBitsFrom(uint16_t remoteSeq)
     {
         uint32_t bits = 0;
 
         for (int i = 0; i < 32; i++)
         {
-            int seq = remoteSeq - 1 - i;
-            if (seq < 0) break;
+            uint16_t seq = remoteSeq - 1 - i;
 
             if (m_receivedBits[seq % 1024] == true)
                 bits |= (1 << i);

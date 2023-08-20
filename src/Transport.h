@@ -96,10 +96,10 @@ namespace Net
         void ReceiveUnreliableDiscardOld(void* buf, size_t bytes, ReceiveDataCallback callback);
         void ReceiveReliable(void* buf, size_t bytes, ReceiveDataCallback callback);
 
-        void SendExtraAcksFrom(uint32_t remoteSeq);
+        void SendExtraAcksFrom(uint16_t remoteSeq);
 
         uint32_t GetAckBits();
-        uint32_t GetAckBitsFrom(uint32_t remoteSeq);
+        uint32_t GetAckBitsFrom(uint16_t remoteSeq);
 
     private:
         struct Sequences
