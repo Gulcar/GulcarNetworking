@@ -31,7 +31,7 @@ namespace Net
         m_socket->SetBlocking(false);
         m_serverAddr = serverAddr;
 
-        m_transport = std::make_unique<Transport>(m_socket.get(), m_serverAddr);
+        m_transport = std::make_unique<Transport>(m_socket.get(), m_serverAddr, &m_stats);
 
         SetStatus(Status::Connecting);
         m_transport->SendConnectRequest();
@@ -56,7 +56,6 @@ namespace Net
 
         assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
 
-        m_stats.AddPacketSent(buf.bytes);
         m_transport->QueueSend(buf.data, buf.bytes, msgType, reliable);
     }
 

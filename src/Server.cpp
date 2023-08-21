@@ -5,10 +5,10 @@
 
 namespace Net
 {
-    Connection::Connection(Socket* socket, IPAddr addr)
+    Connection::Connection(Socket* socket, IPAddr addr, Statistics* stats)
     {
         m_addr = addr;
-        m_transport = std::make_unique<Transport>(socket, m_addr);
+        m_transport = std::make_unique<Transport>(socket, m_addr, stats);
     }
 
     Server::Server()
@@ -44,7 +44,6 @@ namespace Net
         assert(m_socket && "GulcarNet: Server Start not called!");
         assert(buf.bytes < GULCAR_NET_RECV_BUF_SIZE && "Cannot send this much data at once!");
 
-        m_stats.AddPacketSent(buf.bytes);
         conn.m_transport->QueueSend(buf.data, buf.bytes, msgType, reliable);
     }
 
@@ -140,7 +139,7 @@ namespace Net
 
     Server::ConnectionsMap::iterator Server::InsertClient(IPAddr addr)
     {
-        Connection conn(m_socket.get(), addr);
+        Connection conn(m_socket.get(), addr, &m_stats);
         auto res = m_connections.insert(std::make_pair(addr, std::move(conn)));
         auto it = res.first;
 

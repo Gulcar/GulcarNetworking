@@ -25,7 +25,7 @@ namespace Net
         inline const IPAddr& GetAddr() const { return m_addr; }
 
     private:
-        Connection(class Socket* socket, IPAddr addr);
+        Connection(class Socket* socket, IPAddr addr, Statistics* stats);
 
         IPAddr m_addr;
         std::unique_ptr<class Transport> m_transport;

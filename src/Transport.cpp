@@ -136,6 +136,8 @@ namespace Net
             int res = m_socket->SendTo(waiting.packet, waiting.packetSize, m_addr);
             assert(res == waiting.packetSize && "GulcarNet: failed to send!");
 
+            m_stats->AddPacketSent(waiting.packetSize);
+
             m_waitingForAck.push_back({
                 Clock::now(),
                 waiting.packet,
@@ -169,6 +171,7 @@ namespace Net
         assert(res == m_unreliableSendBuf.bytes && "GulcarNet: failed to send!");
 
         DEBUG("send unreliable " << m_unreliableSendBuf.bytes << " bytes\n");
+        m_stats->AddPacketSent(m_unreliableSendBuf.bytes);
 
         m_unreliableSendBuf.bytes = sizeof(Packet);
     }
@@ -186,6 +189,7 @@ namespace Net
         assert(res == m_unreliableDiscardOldSendBuf.bytes && "GulcarNet: failed to send!");
 
         DEBUG("send unreliable discard old " << m_unreliableDiscardOldSendBuf.bytes << " bytes (" << packet->seqNum << ")\n");
+        m_stats->AddPacketSent(m_unreliableDiscardOldSendBuf.bytes);
 
         m_unreliableDiscardOldSendBuf.bytes = sizeof(Packet);
     }
@@ -215,6 +219,7 @@ namespace Net
         assert(res == m_reliableSendBuf.bytes && "GulcarNet: failed to send!");
 
         DEBUG("send reliable " << m_reliableSendBuf.bytes << " bytes (" << packet->seqNum << ")\n");
+        m_stats->AddPacketSent(m_reliableSendBuf.bytes);
 
         m_reliableSendBuf.bytes = sizeof(Packet);
     }
@@ -373,12 +378,10 @@ namespace Net
         packet->ackNum = remoteSeq;
         packet->ackBits = GetAckBitsFrom(remoteSeq);
 
-        uint16_t msgType = MsgType_AcksOnly;
-        memcpy(buf + sizeof(PacketReliable), &msgType, 2);
-        memset(buf + sizeof(PacketReliable) + 2, 0, 2);
-
         int res = m_socket->SendTo(packet, sizeof(PacketReliable), m_addr);
         assert(res == sizeof(PacketReliable) && "GulcarNet: failed to send!");
+
+        m_stats->AddPacketSent(sizeof(PacketReliable));
     }
 
     uint32_t Transport::GetAckBits()

@@ -72,8 +72,8 @@ namespace Net
         };
 
     public:
-        Transport(class Socket* socket, IPAddr addr)
-            : m_socket(socket), m_addr(addr) { }
+        Transport(class Socket* socket, IPAddr addr, class Statistics* stats)
+            : m_socket(socket), m_addr(addr), m_stats(stats) { }
 
         void QueueSend(const void* data, size_t bytes, uint16_t msgType, SendType reliable);
 
@@ -126,5 +126,6 @@ namespace Net
 
         class Socket* m_socket;
         IPAddr m_addr;
+        class Statistics* m_stats;
     };
 }

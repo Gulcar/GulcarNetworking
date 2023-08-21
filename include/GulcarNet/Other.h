@@ -75,6 +75,7 @@ namespace Net
     private:
         friend class Server;
         friend class Client;
+        friend class Transport;
 
         Statistics() {}
 
